@@ -94,7 +94,10 @@
 	<section>
 		<h1>Step 1 of 5: Resolve Handle to DID</h1>
 		<p>
-			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			The first step when <strong>backing up</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+		</p>
+		<p>
+			The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> represents the user whose <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> you want to <strong>backup</strong>.
 		</p>
 		<p>
 			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handles</strong> are just <strong>Internet domains</strong>, such as:
@@ -164,7 +167,7 @@
 	<section>
 		<h1>Step 2 of 5: Resolve DID to DID Document</h1>
 		<p>
-			The second step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+			The second step when <strong>backing up</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
 		</p>
 		<p>
 			How you do this (<strong>resolving</strong> a <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>) depends on what type of <strong><abbr title="decentralized identifier">DID</abbr></strong> you have.
@@ -204,7 +207,7 @@ did:web:example.com
 	<section>
 		<h1>Step 3 of 5: Download Repository</h1>
 		<p>
-			The third step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
+			The third step when <strong>backing up</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
 			The <strong>repository</strong> is downloaded as a single file — a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file.
 		</p>
 		<p>
@@ -234,18 +237,18 @@ curl https://blacksky.app/xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz
 	<section>
 		<h1>Step 4 of 5: List <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
 		<p>
-			The fourth step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is list out all the <abbr title="Binary Large OBject">BLOB</abbr>s in the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The fourth step when <strong>backing up</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is list out all the <abbr title="Binary Large OBject">BLOB</abbr>s in the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
 		</p>
 	</section>
 	<section>
 		<h1>Step 5 of 5: Download <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
 		<p>
-			The fifth step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to download each <abbr title="Binary Large OBject">BLOB</abbr>s inside the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The fifth step when <strong>backing up</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to download each <abbr title="Binary Large OBject">BLOB</abbr>s inside the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
 		</p>
 		<p>
 			Note that, you will likely have to do this <abbr title="Binary Large OBject">BLOB</abbr> download multiple times
 			—
-			since, if an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> has multiple <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> inside of it, then you will have to download each of those separately.
+			since, if an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> has multiple <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> inside of it, then you will have to download each of them separately.
 		</p>
 	</section>
 	<footer>
