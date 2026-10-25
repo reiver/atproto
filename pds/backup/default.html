@@ -74,6 +74,21 @@
 	</p>
 	<section>
 		<h1>Step 1: Backup Repository</h1>
+		<p>
+			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
+			The <strong>repository</strong> is download as a single file — a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file.
+		</p>
+		<p>
+			(Remember, this will <em>not</em> download the <abbr title="Binary Large OBject">BLOB</abbr>s.
+			You still need to download the <abbr title="Binary Large OBject">BLOB</abbr>s separate from this step.)
+		</p>
+		<p>
+			To download the <strong>repository</strong> as a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file you call the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <code>com.atproto.sync.getRepo</code> <strong>XRPC</strong> API end-point.
+			For example:
+		</p>
+		<pre><code>
+GET /xrpc/com.atproto.sync.getRepo?did={PUT_DID_HERE}
+		</code></pre>
 	</section>
 	<section>
 		<h1>Step 2: Backup <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
