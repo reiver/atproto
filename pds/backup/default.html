@@ -103,10 +103,16 @@
 		</p>
 		<p>
 			To download the <strong>repository</strong> as a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file you call the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <code>com.atproto.sync.getRepo</code> <strong>XRPC</strong> API end-point.
-			For example:
+			The HTTP request for this would look something like:
 		</p>
 		<pre><code>
 GET /xrpc/com.atproto.sync.getRepo?did={PUT_DID_HERE}
+		</code></pre>
+		<p>
+			For example:
+		</p>
+		<pre><code>
+GET /xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz36mxme2b6czz
 		</code></pre>
 	</section>
 	<section>
