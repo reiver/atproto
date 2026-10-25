@@ -92,12 +92,12 @@
 		Let's look at how each of these is used in more detail.
 	</p>
 	<section>
-		<h1>Step 1 of 4: Download Repository</h1>
+		<h1>Step 1 of 5: Resolve Handle to DID</h1>
 		<p>
-			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong>.
+			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong title="decentralized identifier"><abbr>DID</abbr></strong>.
 		</p>
 		<p>
-			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> handles are just Internet domains, such as:
+			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handles</strong> are just <strong>Internet domains</strong>, such as:
 		</p>
 		<ul>
 			<li><code>andypiper.me</code></li>
@@ -129,7 +129,7 @@
 			<li><code>timothychambers.net</code></li>
 		</ul>
 		<p>
-			Although, they are often written in “@” prefixed notation:
+			Although, <strong>handles</strong> are often written in “@” prefixed notation:
 		</p>
 		<ul>
 			<li><code>@andypiper.me</code></li>
@@ -162,9 +162,15 @@
 		</ul>
 	</section>
 	<section>
-		<h1>Step 2 of 4: Download Repository</h1>
+		<h1>Step 2 of 5: Resolve DID to DID Document</h1>
 		<p>
-			The second step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
+			The second step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong title="decentralized identifier"><abbr>DID</abbr></strong> to a <strong title="decentralized identifier"><abbr>DID</abbr> document</strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Step 3 of 5: Download Repository</h1>
+		<p>
+			The third step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
 			The <strong>repository</strong> is downloaded as a single file — a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file.
 		</p>
 		<p>
@@ -192,15 +198,15 @@ curl https://blacksky.app/xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz
 		</code></pre>
 	</section>
 	<section>
-		<h1>Step 3 of 4: List <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+		<h1>Step 4 of 5: List <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
 		<p>
-			The third step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is list out all the <abbr title="Binary Large OBject">BLOB</abbr>s in the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The fourth step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is list out all the <abbr title="Binary Large OBject">BLOB</abbr>s in the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
 		</p>
 	</section>
 	<section>
-		<h1>Step 4 of 4: Download <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+		<h1>Step 5 of 5: Download <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
 		<p>
-			The fourth step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to download each <abbr title="Binary Large OBject">BLOB</abbr>s inside the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The fifth step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to download each <abbr title="Binary Large OBject">BLOB</abbr>s inside the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
 		</p>
 		<p>
 			Note that, you will likely have to do this <abbr title="Binary Large OBject">BLOB</abbr> download multiple times
