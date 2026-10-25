@@ -92,9 +92,79 @@
 		Let's look at how each of these is used in more detail.
 	</p>
 	<section>
-		<h1>Step 1 of 3: Download Repository</h1>
+		<h1>Step 1 of 4: Download Repository</h1>
 		<p>
-			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
+			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong>.
+		</p>
+		<p>
+			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> handles are just Internet domains, such as:
+		</p>
+		<ul>
+			<li><code>andypiper.me</code></li>
+			<li><code>atomicpoet.bsky.social</code></li>
+			<li><code>bmann.ca</code></li>
+			<li><code>bnewbold.net</code></li>
+			<li><code>box464.com</code></li>
+			<li><code>damonoutlaw.xyz</code></li>
+			<li><code>dansup.com</code></li>
+			<li><code>deadsuperhero.com</code></li>
+			<li><code>dholms.at</code></li>
+			<li><code>drkalyncoghill.blacksky.team</code></li>
+			<li><code>elenarossini.com</code></li>
+			<li><code>jay.bsky.social</code></li>
+			<li><code>jdot.blacksky.team</code></li>
+			<li><code>jenniferplusplus.com</code></li>
+			<li><code>jesseplusplus.com</code></li>
+			<li><code>lanae.blacksky.team</code></li>
+			<li><code>laurenshof.online</code></li>
+			<li><code>marisa.blacksky.team</code></li>
+			<li><code>pfrazee.com</code></li>
+			<li><code>phillycodehound.com</code></li>
+			<li><code>quillmatiq.com</code></li>
+			<li><code>rabble.nz</code></li>
+			<li><code>reiver.myatproto.social</code></li>
+			<li><code>rishkebab.blacksky.team</code></li>
+			<li><code>rude1.blacksky.team</code></li>
+			<li><code>snarfed.org</code></li>
+			<li><code>timothychambers.net</code></li>
+		</ul>
+		<p>
+			Although, they are often written in “@” prefixed notation:
+		</p>
+		<ul>
+			<li><code>@andypiper.me</code></li>
+			<li><code>@atomicpoet.bsky.social</code></li>
+			<li><code>@bmann.ca</code></li>
+			<li><code>@bnewbold.net</code></li>
+			<li><code>@box464.com</code></li>
+			<li><code>@damonoutlaw.xyz</code></li>
+			<li><code>@dansup.com</code></li>
+			<li><code>@deadsuperhero.com</code></li>
+			<li><code>@dholms.at</code></li>
+			<li><code>@drkalyncoghill.blacksky.team</code></li>
+			<li><code>@elenarossini.com</code></li>
+			<li><code>@jay.bsky.social</code></li>
+			<li><code>@jdot.blacksky.team</code></li>
+			<li><code>@jenniferplusplus.com</code></li>
+			<li><code>@jesseplusplus.com</code></li>
+			<li><code>@lanae.blacksky.team</code></li>
+			<li><code>@laurenshof.online</code></li>
+			<li><code>@marisa.blacksky.team</code></li>
+			<li><code>@pfrazee.com</code></li>
+			<li><code>@phillycodehound.com</code></li>
+			<li><code>@quillmatiq.com</code></li>
+			<li><code>@rabble.nz</code></li>
+			<li><code>@reiver.myatproto.social</code></li>
+			<li><code>@rishkebab.blacksky.team</code></li>
+			<li><code>@rude1.blacksky.team</code></li>
+			<li><code>@snarfed.org</code></li>
+			<li><code>@timothychambers.net</code></li>
+		</ul>
+	</section>
+	<section>
+		<h1>Step 2 of 4: Download Repository</h1>
+		<p>
+			The second step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is download the <strong>repository</strong>.
 			The <strong>repository</strong> is downloaded as a single file — a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file.
 		</p>
 		<p>
@@ -103,7 +173,7 @@
 		</p>
 		<p>
 			To download the <strong>repository</strong> as a <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> (<strong>Content Addressable Archive</strong>) file you call the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <code>com.atproto.sync.getRepo</code> <strong>XRPC</strong> API end-point.
-			The HTTP request for this would look something like:
+			The pseudo-HTTP request for this would look something like:
 		</p>
 		<pre><code>
 GET /xrpc/com.atproto.sync.getRepo?did={PUT_DID_HERE}
@@ -114,12 +184,29 @@ GET /xrpc/com.atproto.sync.getRepo?did={PUT_DID_HERE}
 		<pre><code>
 GET /xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz36mxme2b6czz
 		</code></pre>
+		<p>
+			As a <tt>curl</tt> command, this would look like this:
+		</p>
+		<pre><code>
+curl https://blacksky.app/xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz36mxme2b6czz
+		</code></pre>
 	</section>
 	<section>
-		<h1>Step 2 of 3: List <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+		<h1>Step 3 of 4: List <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+		<p>
+			The third step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is list out all the <abbr title="Binary Large OBject">BLOB</abbr>s in the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		</p>
 	</section>
 	<section>
-		<h1>Step 3 of 3: Download <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+		<h1>Step 4 of 4: Download <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+		<p>
+			The fourth step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to download each <abbr title="Binary Large OBject">BLOB</abbr>s inside the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		</p>
+		<p>
+			Note that, you will likely have to do this <abbr title="Binary Large OBject">BLOB</abbr> download multiple times
+			—
+			since, if an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> has multiple <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> inside of it, then you will have to download each of those separately.
+		</p>
 	</section>
 	<footer>
 		<include src="../../author.html"></include>
