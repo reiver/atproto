@@ -94,7 +94,7 @@
 	<section>
 		<h1>Step 1 of 5: Resolve Handle to DID</h1>
 		<p>
-			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong title="decentralized identifier"><abbr>DID</abbr></strong>.
+			The first step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
 		</p>
 		<p>
 			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handles</strong> are just <strong>Internet domains</strong>, such as:
@@ -164,8 +164,42 @@
 	<section>
 		<h1>Step 2 of 5: Resolve DID to DID Document</h1>
 		<p>
-			The second step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong title="decentralized identifier"><abbr>DID</abbr></strong> to a <strong title="decentralized identifier"><abbr>DID</abbr> document</strong>.
+			The second step when backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> is to <strong>resolve</strong> the <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
 		</p>
+		<p>
+			How you do this (<strong>resolving</strong> a <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>) depends on what type of <strong><abbr title="decentralized identifier">DID</abbr></strong> you have.
+			I.e., depends on the <strong><abbr title="decentralized identifier">DID</abbr> method</strong>.
+		</p>
+		<p>
+			At the time of writing, there are 2 well supported <strong><abbr title="decentralized identifier">DID</abbr> methods</strong> with <strong><abbr title="AT-Protocol">ATProto</abbr></strong> software:
+		</p>
+		<dl>
+			<dt>DID-PLC</dt>
+			<dd>
+				<p>
+					For example:
+				</p>
+				<pre><code>
+did:plc:scewmn2pl3oz36mxme2b6czz
+				</code></pre>
+			</dd>
+
+			<dt>DID-Web (Internet domain based only)</dt>
+			<dd>
+				<p>
+					For example:
+				</p>
+				<pre><code>
+did:web:example.com
+				</code></pre>
+			</dd>
+		</dl>
+		<section>
+			<h1>Step 2(a) of 5: Resolve DID-PLC to DID Document</h1>
+		</section>
+		<section>
+			<h1>Step 2(a) of 5: Resolve DID-Web to DID Document</h1>
+		</section>
 	</section>
 	<section>
 		<h1>Step 3 of 5: Download Repository</h1>
