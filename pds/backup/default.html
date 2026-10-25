@@ -39,7 +39,7 @@
 		</p>
 	</header>
 	<p>
-		This article goes over how <strong>backup</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) from a computer programming point-of-view.
+		This article goes over how-to <strong>backup</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) from a computer programming point-of-view.
 	</p>
 	<p>
 		Backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> involves 2 main things:
@@ -59,6 +59,9 @@
 		etc.
 	</p>
 	<p>
+		To <strong>backup</strong> a <strong><abbr title="Personal Data Server">PDS</abbr></strong> you will need to backup both of these — the <strong>repository</strong>, and <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong>.
+	</p>
+	<p>
 		Backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> involves 3 <strong>XRPC</strong> API end-points:
 	</p>
 	<ul>
@@ -66,6 +69,15 @@
 		<li><code>com.atproto.sync.listBlobs</code></li>
 		<li><code>com.atproto.sync.getBlob</code></li>
 	</ul>
+	<p>
+		Let's look at how each of these is used in more detail.
+	</p>
+	<section>
+		<h1>Step 1: Backup Repository</h1>
+	</section>
+	<section>
+		<h1>Step 2: Backup <abbr title="Binary Large OBject">BLOB</abbr>s</h1>
+	</section>
 	<footer>
 		<include src="../../author.html"></include>
 		<include src="../../license.html"></include>
