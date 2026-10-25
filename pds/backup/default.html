@@ -17,6 +17,7 @@
 <nav class="breadcrumbs" aria-label="Breadcrumb">
 	<ol>
 		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li
 		<li><a href="../">Personal Data Server (<abbr title="Personal Data Server">PDS</abbr>)</a></li>
 		<li><a href="./" aria-current="page">Backup</a></li>
 	</ol>
@@ -29,14 +30,42 @@
 			<h1 property="headline">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr>: A Developers' Guide</h1>
 			<p>
 				<code>com.atproto.sync.getRepo</code>
-				<code>com.atproto.sync.getBlob</code>
 				<code>com.atproto.sync.listBlobs</code>
+				<code>com.atproto.sync.getBlob</code>
 			</p>
 		</hgroup>
 		<p>
 			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
 		</p>
 	</header>
+	<p>
+		This article goes over how <strong>backup</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) from a computer programming point-of-view.
+	</p>
+	<p>
+		Backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> involves 2 main things:
+		the <strong>repository</strong>, and <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong>.
+	</p>
+	<p>
+		The <strong>repository</strong> contains things such as:
+		posts,
+		likes,
+		followers,
+		etc.
+	</p>
+	<p>
+		<strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> are things such as:
+		images,
+		videos,
+		etc.
+	</p>
+	<p>
+		Backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> involves 3 <strong>XRPC</strong> API end-points:
+	</p>
+	<ul>
+		<li><code>com.atproto.sync.getRepo</code></li>
+		<li><code>com.atproto.sync.listBlobs</code></li>
+		<li><code>com.atproto.sync.getBlob</code></li>
+	</ul>
 	<footer>
 		<include src="../../author.html"></include>
 		<include src="../../license.html"></include>
