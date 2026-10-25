@@ -66,11 +66,28 @@
 	<p>
 		Backing up an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong> involves 3 <strong>XRPC</strong> API end-points:
 	</p>
-	<ul>
-		<li><code>com.atproto.sync.getRepo</code></li>
-		<li><code>com.atproto.sync.listBlobs</code></li>
-		<li><code>com.atproto.sync.getBlob</code></li>
-	</ul>
+	<dl>
+		<dt><code>com.atproto.sync.getRepo</code></dt>
+		<dd>
+			<p>
+				downloads the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s <strong>repository</strong> as a single <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> file.
+			</p>
+		</dd>
+
+		<dt><code>com.atproto.sync.listBlobs</code></dt>
+		<dd>
+			<p>
+				lists out all the <abbr title="Binary Large OBject">BLOB</abbr>s that are inside an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			</p>
+		</dd>
+
+		<dt><code>com.atproto.sync.getBlob</code></dt>
+		<dd>
+			<p>
+				downloads a single <abbr title="Binary Large OBject">BLOB</abbr> that is inside an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			</p>
+		</dd>
+	</dl>
 	<p>
 		Let's look at how each of these is used in more detail.
 	</p>
