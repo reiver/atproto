@@ -388,7 +388,7 @@ import (
 // resolveHandleDNS resolves an ATProto handle to a DID using a DNS TXT record.
 func resolveHandleDNS(ctx context.Context, handle string) (string, error) {
 	records, err := net.DefaultResolver.LookupTXT(ctx, "_atproto."+handle)
-	if err != nil {
+	if nil != err {
 		return "", err
 	}
 
@@ -414,12 +414,12 @@ func resolveHandleHTTPS(ctx context.Context, handle string) (string, error) {
 	url := "https://" + handle + "/.well-known/atproto-did"
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
+	if nil != err {
 		return "", err
 	}
 
 	response, err := http.DefaultClient.Do(request)
-	if err != nil {
+	if nil != err {
 		return "", err
 	}
 	defer response.Body.Close()
@@ -429,7 +429,7 @@ func resolveHandleHTTPS(ctx context.Context, handle string) (string, error) {
 	}
 
 	body, err := io.ReadAll(io.LimitReader(response.Body, 1024))
-	if err != nil {
+	if nil != err {
 		return "", err
 	}
 
