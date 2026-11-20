@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>How-To Resolve an ATProto Lexicon: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="dns" />
+<meta name="category" content="how-to" />
+<meta name="category" content="lexicon" />
+<meta name="category" content="lexicon resolution" />
+<meta name="category" content="namespaced identifier" />
+<meta name="category" content="nsid" />
+<meta name="category" content="open social web" />
+<meta name="category" content="schema" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">How-To</a></li>
+		<li><a href="./" aria-current="page">Resolve a Lexicon</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">How-To Resolve a Lexicon</h1>
+			<p>
+				<code>_lexicon.</code>
+				<code>com.atproto.lexicon.schema</code>
+				<code>com.atproto.repo.getRecord</code>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		This article goes over how-to <strong>resolve</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>Lexicon</strong> from a computer-programming point-of-view.
+	</p>
+	<p>
+		For example, resolving the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>:
+	</p>
+	<pre><code>
+app.bsky.feed.post
+	</code></pre>
+	<p>
+		To the <strong>Lexicon</strong> schema that describes what a Bluesky post looks like.
+	</p>
+	<section>
+		<h1>Lexicons and NSIDs</h1>
+		<p>
+			A <strong>Lexicon</strong> is a schema.
+			It is written in <abbr title="JavaScript Object Notation">JSON</abbr>.
+			It describes the shape of some data in <strong><abbr title="AT-Protocol">ATProto</abbr></strong> — such as a type of record (a post, a like, a follow, a profile, etc), or an <strong>XRPC</strong> API end-point.
+		</p>
+		<p>
+			Every <strong>Lexicon</strong> has a name.
+			That name is called a <strong><a href="../../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong> (short for <em>Namespaced Identifier</em>).
+			For example:
+		</p>
+		<ul>
+			<li><code>app.bsky.feed.post</code></li>
+			<li><code>app.bsky.actor.profile</code></li>
+			<li><code>com.atproto.repo.getRecord</code></li>
+			<li><code>com.atproto.identity.resolveHandle</code></li>
+		</ul>
+		<p>
+			An <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> looks like an Internet domain written backwards, with a name on the end:
+		</p>
+		<figure>
+			<pre>
+app.bsky.feed.post
+└─────┬─────┘└─┬┘
+      │        │
+  authority   name
+			</pre>
+		</figure>
+		<p>
+			The <strong>authority</strong> is the part that is an Internet domain (written backwards).
+			The <strong>name</strong> is the last segment.
+		</p>
+		<p>
+			<strong>Resolving</strong> a <strong>Lexicon</strong> means: given an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, find and download its <strong>Lexicon</strong> schema.
+			You might want to do this, for example, to validate a record whose type your software has never seen before.
+		</p>
+	</section>
+	<section>
+		<h1>Overview</h1>
+		<p>
+			<strong>Lexicons</strong> are published as records in an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>repository</strong> — the same kind of <strong>repository</strong> that holds a user's posts and likes.
+			The owner of the Internet domain in the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> says <em>which</em> <strong>repository</strong>, using <strong><abbr title="Domain Name System">DNS</abbr></strong>.
+		</p>
+		<p>
+			So, resolving a <strong>Lexicon</strong> has 4 steps:
+		</p>
+		<ol>
+			<li>turn the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> into a <strong><abbr title="Domain Name System">DNS</abbr></strong> name,</li>
+			<li>look up the <strong><abbr title="Domain Name System">DNS</abbr></strong> <strong>TXT</strong> record to get a <strong><abbr title="decentralized identifier">DID</abbr></strong>,</li>
+			<li>resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and</li>
+			<li>fetch the <strong>Lexicon</strong> record from the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.</li>
+		</ol>
+		<figure>
+			<pre>
+┌──────┐  step 1  ┌──────────┐  step 2  ┌─────┐  step 3  ┌─────┐  step 4  ┌─────────┐
+│ NSID │ ───────► │ DNS name │ ───────► │ DID │ ───────► │ PDS │ ───────► │ Lexicon │
+└──────┘          └──────────┘          └─────┘          └─────┘          └─────────┘
+			</pre>
+		</figure>
+		<p>
+			If this looks familiar, it should.
+			Steps 2 and 3 are very similar to <a href="../resolve-handle-to-did/">resolving a handle to a <abbr title="decentralized identifier">DID</abbr></a>, and <a href="../resolve-did-to-pds/">resolving a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.
+		</p>
+		<p>
+			Let's look at each of these steps in more detail.
+		</p>
+	</section>
+	<section>
+		<h1>Step 1: Turn the NSID into a DNS Name</h1>
+		<p>
+			To turn an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> into a <strong><abbr title="Domain Name System">DNS</abbr></strong> name:
+		</p>
+		<ol>
+			<li>remove the <strong>name</strong> (the last segment),</li>
+			<li>reverse the order of the segments that are left, and</li>
+			<li>put <code>_lexicon.</code> in front.</li>
+		</ol>
+		<p>
+			For example:
+		</p>
+		<figure>
+			<pre>
+app.bsky.feed.post          (NSID)
+app.bsky.feed               (remove the name)
+feed.bsky.app               (reverse)
+_lexicon.feed.bsky.app      (put "_lexicon." in front)
+			</pre>
+		</figure>
+		<p>
+			Notice that the <strong>name</strong> is <em>not</em> part of the <strong><abbr title="Domain Name System">DNS</abbr></strong> name.
+			This means that all the <strong>Lexicons</strong> in the same group share the same <strong><abbr title="Domain Name System">DNS</abbr></strong> name:
+		</p>
+		<figure>
+			<pre>
+app.bsky.feed.post       →  _lexicon.feed.bsky.app
+app.bsky.feed.like       →  _lexicon.feed.bsky.app
+app.bsky.feed.repost     →  _lexicon.feed.bsky.app
+app.bsky.actor.profile   →  _lexicon.actor.bsky.app
+			</pre>
+		</figure>
+		<p>
+			(The <strong>authority</strong> part of an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> is not case-sensitive, so you can convert it to lower-case.
+			But, the <strong>name</strong> part <em>is</em> case-sensitive — <code>getRecord</code> is not the same as <code>getrecord</code>.
+			So, never change the case of the <strong>name</strong>.)
+		</p>
+	</section>
+	<section>
+		<h1>Step 2: Look Up the DNS TXT Record</h1>
+		<p>
+			Look up the <strong>TXT</strong> records for the <strong><abbr title="Domain Name System">DNS</abbr></strong> name from step 1.
+		</p>
+		<p>
+			You can try this yourself, from the command-line, with the <code>dig</code> program:
+		</p>
+		<figure>
+			<pre>
+$ dig +short TXT _lexicon.feed.bsky.app
+"did=did:plc:4v4y5r3lwsbtmsxhile2ljac"
+			</pre>
+		</figure>
+		<p>
+			Just like with handles, the value of the <strong>TXT</strong> record starts with <code>did=</code>.
+			Everything after the <code>did=</code> is the <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+		</p>
+		<figure>
+			<pre>
+did=did:plc:4v4y5r3lwsbtmsxhile2ljac
+└┬─┘└──────────────┬───────────────┘
+ │                 │
+prefix            DID
+			</pre>
+		</figure>
+		<p>
+			This <strong><abbr title="decentralized identifier">DID</abbr></strong> is the <strong>repository</strong> where the <strong>Lexicons</strong> are published.
+		</p>
+		<p>
+			A few rules:
+		</p>
+		<ul>
+			<li>
+				The prefix is <code>_lexicon.</code> — <em>not</em> <code>_atproto.</code> (which is used for handles).
+			</li>
+			<li>
+				There is no <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> method for this.
+				(Unlike handles, which can also use <code>/.well-known/atproto-did</code>.)
+				It is <strong><abbr title="Domain Name System">DNS</abbr></strong> only.
+			</li>
+			<li>
+				Do <em>not</em> go up (or down) the <strong><abbr title="Domain Name System">DNS</abbr></strong> hierarchy looking for a record.
+				If there is no record at <code>_lexicon.feed.bsky.app</code>, then do <em>not</em> try <code>_lexicon.bsky.app</code>.
+				Resolution has simply <em>failed</em>.
+			</li>
+		</ul>
+		<p>
+			(The specification does not say what to do if there are 2 or more <code>did=</code> records.
+			A sensible choice is to do what is done for handles — ignore records that do not start with <code>did=</code>, and fail if there are records with different <strong><abbr title="decentralized identifier">DID</abbr>s</strong>.)
+		</p>
+	</section>
+	<section>
+		<h1>Step 3: Resolve the DID to a PDS</h1>
+		<p>
+			Next, resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> from step 2 to its <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			This is done exactly the same way as for a user's <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			That is covered in: <a href="../resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> (decentralized identifier) to a <abbr title="Personal Data Server">PDS</abbr> (personal data server)</a>.
+		</p>
+		<p>
+			For example:
+		</p>
+		<figure>
+			<pre>
+$ curl https://plc.directory/did:plc:4v4y5r3lwsbtmsxhile2ljac
+{
+  ...
+  "id": "did:plc:4v4y5r3lwsbtmsxhile2ljac",
+  "alsoKnownAs": [
+    "at://bsky-lexicons.bsky.social"
+  ],
+  ...
+  "service": [
+    {
+      "id": "#atproto_pds",
+      "type": "AtprotoPersonalDataServer",
+      "serviceEndpoint": "https://hollowfoot.us-west.host.bsky.network"
+    }
+  ]
+}
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed and reformatted, to make it easier to read.)
+		</p>
+		<p>
+			So, the <strong><abbr title="Personal Data Server">PDS</abbr></strong> is <code>https://hollowfoot.us-west.host.bsky.network</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Step 4: Fetch the Lexicon Record</h1>
+		<p>
+			<strong>Lexicons</strong> are stored in the <strong>repository</strong> as records:
+		</p>
+		<ul>
+			<li>in the collection <code>com.atproto.lexicon.schema</code>,</li>
+			<li>with the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> as the record-key.</li>
+		</ul>
+		<p>
+			So, the <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> of the <strong>Lexicon</strong> for <code>app.bsky.feed.post</code> is:
+		</p>
+		<figure>
+			<pre>
+at://did:plc:4v4y5r3lwsbtmsxhile2ljac/com.atproto.lexicon.schema/app.bsky.feed.post
+     └──────────────┬───────────────┘ └───────────┬────────────┘ └───────┬────────┘
+                    │                             │                      │
+                   DID                        collection             record-key
+			</pre>
+		</figure>
+		<p>
+			To fetch it, call the <code>com.atproto.repo.getRecord</code> <strong>XRPC</strong> API end-point on the <strong><abbr title="Personal Data Server">PDS</abbr></strong>, with these 3 parameters:
+		</p>
+		<dl>
+			<dt><code>repo</code></dt>
+			<dd>
+				<p>
+					the <strong><abbr title="decentralized identifier">DID</abbr></strong> — <code>did:plc:4v4y5r3lwsbtmsxhile2ljac</code>
+				</p>
+			</dd>
+
+			<dt><code>collection</code></dt>
+			<dd>
+				<p>
+					<code>com.atproto.lexicon.schema</code>
+				</p>
+			</dd>
+
+			<dt><code>rkey</code></dt>
+			<dd>
+				<p>
+					the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> — <code>app.bsky.feed.post</code>
+				</p>
+			</dd>
+		</dl>
+		<p>
+			You can try this yourself, from the command-line, with the <code>curl</code> program:
+		</p>
+		<figure>
+			<pre>
+$ curl 'https://hollowfoot.us-west.host.bsky.network/xrpc/com.atproto.repo.getRecord?repo=did:plc:4v4y5r3lwsbtmsxhile2ljac&amp;collection=com.atproto.lexicon.schema&amp;rkey=app.bsky.feed.post'
+{
+  "uri": "at://did:plc:4v4y5r3lwsbtmsxhile2ljac/com.atproto.lexicon.schema/app.bsky.feed.post",
+  "cid": "bafyreia7rgxu7467phwpcgzaw62l5bzmxufkpikrc5zm4q3xhjmuhq4pti",
+  "value": {
+    "$type": "com.atproto.lexicon.schema",
+    "lexicon": 1,
+    "id": "app.bsky.feed.post",
+    "defs": {
+      "main": {
+        "type": "record",
+        "key": "tid",
+        "record": {
+          "type": "object",
+          "required": [
+            "text",
+            "createdAt"
+          ],
+          ...
+        }
+      },
+      ...
+    }
+  }
+}
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed and reformatted, to make it easier to read.)
+		</p>
+		<p>
+			The <strong>Lexicon</strong> schema is the <code>value</code>.
+		</p>
+		<p>
+			Before using it, check that:
+		</p>
+		<ul>
+			<li><code>$type</code> is <code>com.atproto.lexicon.schema</code>,</li>
+			<li><code>lexicon</code> is <code>1</code>, and</li>
+			<li><code>id</code> is the same as the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> you asked for.</li>
+		</ul>
+		<p>
+			If any of these is not true, then resolution has <em>failed</em>.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is an example of resolving a <strong>Lexicon</strong> in the Go programming-language.
+			(To keep it short, it only supports <code>did:plc</code> in step 3.
+			See the <a href="../resolve-did-to-pds/"><abbr title="decentralized identifier">DID</abbr> to <abbr title="Personal Data Server">PDS</abbr></a> article for <code>did:web</code> too.)
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+)
+
+// lexiconDomain returns the DNS name to look up for an NSID.
+// For example: "app.bsky.feed.post" → "_lexicon.feed.bsky.app"
+func lexiconDomain(nsid string) (string, error) {
+	segments := strings.Split(nsid, ".")
+	if len(segments) &lt; 3 {
+		return "", errors.New("not an NSID")
+	}
+
+	// Remove the name (the last segment).
+	authority := segments[:len(segments)-1]
+
+	// Reverse the authority.
+	var reversed []string
+	for i := len(authority) - 1; 0 &lt;= i; i-- {
+		reversed = append(reversed, strings.ToLower(authority[i]))
+	}
+
+	return "_lexicon." + strings.Join(reversed, "."), nil
+}
+
+// resolveLexiconDID resolves an NSID to the DID of the repository that publishes it.
+func resolveLexiconDID(ctx context.Context, nsid string) (string, error) {
+	domain, err := lexiconDomain(nsid)
+	if nil != err {
+		return "", err
+	}
+
+	records, err := net.DefaultResolver.LookupTXT(ctx, domain)
+	if nil != err {
+		return "", err
+	}
+
+	var did string
+	for _, record := range records {
+		if !strings.HasPrefix(record, "did=") {
+			continue
+		}
+		value := strings.TrimPrefix(record, "did=")
+		if "" != did &amp;&amp; did != value {
+			return "", errors.New("more than one DID found")
+		}
+		did = value
+	}
+	if "" == did {
+		return "", errors.New("no DID found")
+	}
+	return did, nil
+}
+
+// getJSON does an HTTP GET, and decodes the JSON response into dst.
+func getJSON(ctx context.Context, url string, dst any) error {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if nil != err {
+		return err
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if nil != err {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode &lt; 200 || 299 &lt; response.StatusCode {
+		return fmt.Errorf("HTTP status %d", response.StatusCode)
+	}
+
+	return json.NewDecoder(io.LimitReader(response.Body, 1024*1024)).Decode(dst)
+}
+
+// resolvePDS resolves a did:plc to the URL of its PDS.
+// (See the "How-To Resolve a DID to a PDS" article for did:web too.)
+func resolvePDS(ctx context.Context, did string) (string, error) {
+	if !strings.HasPrefix(did, "did:plc:") {
+		return "", errors.New("unsupported DID method")
+	}
+
+	var document struct {
+		ID      string `json:"id"`
+		Service []struct {
+			ID              string `json:"id"`
+			Type            string `json:"type"`
+			ServiceEndpoint string `json:"serviceEndpoint"`
+		} `json:"service"`
+	}
+	err := getJSON(ctx, "https://plc.directory/"+did, &amp;document)
+	if nil != err {
+		return "", err
+	}
+	if did != document.ID {
+		return "", errors.New("DID document is for a different DID")
+	}
+
+	for _, service := range document.Service {
+		if strings.HasSuffix(service.ID, "#atproto_pds") &amp;&amp; "AtprotoPersonalDataServer" == service.Type {
+			return service.ServiceEndpoint, nil
+		}
+	}
+	return "", errors.New("no PDS found")
+}
+
+// resolveLexicon resolves an NSID to its Lexicon schema.
+func resolveLexicon(ctx context.Context, nsid string) (map[string]any, error) {
+	did, err := resolveLexiconDID(ctx, nsid)
+	if nil != err {
+		return nil, err
+	}
+
+	pds, err := resolvePDS(ctx, did)
+	if nil != err {
+		return nil, err
+	}
+
+	query := url.Values{}
+	query.Set("repo", did)
+	query.Set("collection", "com.atproto.lexicon.schema")
+	query.Set("rkey", nsid)
+
+	var response struct {
+		Value map[string]any `json:"value"`
+	}
+	err = getJSON(ctx, pds+"/xrpc/com.atproto.repo.getRecord?"+query.Encode(), &amp;response)
+	if nil != err {
+		return nil, err
+	}
+
+	schema := response.Value
+	if "com.atproto.lexicon.schema" != schema["$type"] {
+		return nil, errors.New("record is not a Lexicon schema")
+	}
+	if nsid != schema["id"] {
+		return nil, errors.New("Lexicon schema is for a different NSID")
+	}
+	return schema, nil
+}
+
+func main() {
+	for _, nsid := range os.Args[1:] {
+		schema, err := resolveLexicon(context.Background(), nsid)
+		if nil != err {
+			fmt.Printf("%s → ERROR: %s\n", nsid, err)
+			continue
+		}
+
+		bytes, err := json.MarshalIndent(schema, "", "  ")
+		if nil != err {
+			fmt.Printf("%s → ERROR: %s\n", nsid, err)
+			continue
+		}
+		fmt.Printf("%s →\n%s\n", nsid, bytes)
+	}
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it gives:
+		</p>
+		<figure>
+			<pre>
+$ go run . app.bsky.actor.profile
+app.bsky.actor.profile →
+{
+  "$type": "com.atproto.lexicon.schema",
+  "defs": {
+    "main": {
+      "description": "A declaration of a Bluesky account profile.",
+      "key": "literal:self",
+      ...
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed, to make it easier to read.)
+		</p>
+	</section>
+	<section>
+		<h1>Shortcut: Ask a Server To Do It</h1>
+		<p>
+			There is also an <strong>XRPC</strong> API end-point for resolving <strong>Lexicons</strong>:
+		</p>
+		<dl>
+			<dt><code>com.atproto.lexicon.resolveLexicon</code></dt>
+			<dd>
+				<p>
+					resolves an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>Lexicon</strong> (<abbr title="Namespaced Identifier">NSID</abbr>) to a schema.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			It takes one parameter, <code>nsid</code>.
+			And, it returns the <code>uri</code>, the <code>cid</code>, and the <code>schema</code>.
+		</p>
+		<p>
+			However, at the time of writing, it is not widely available.
+			For example, Bluesky's public API server (<code>public.api.bsky.app</code>) responded with <code>MethodNotImplemented</code>, and a <strong><abbr title="Personal Data Server">PDS</abbr></strong> responded with <code>AuthMissing</code> (it required logging in).
+			So, it is good to know how to do the resolving yourself.
+		</p>
+	</section>
+	<section>
+		<h1>Caching</h1>
+		<p>
+			The specification says that you should <em>not</em> cache the <strong><abbr title="Domain Name System">DNS</abbr></strong> result for a long time.
+		</p>
+		<p>
+			(The owner of an Internet domain can move their <strong>Lexicons</strong> to a different <strong>repository</strong> by changing the <strong><abbr title="Domain Name System">DNS</abbr></strong> record.
+			And, unlike changes to the <strong>Lexicon</strong> records themselves, changes to <strong><abbr title="Domain Name System">DNS</abbr></strong> are not announced on the “firehose”.)
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			To <strong>resolve</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>Lexicon</strong>:
+		</p>
+		<ol>
+			<li>Remove the <strong>name</strong> from the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, reverse the rest, and put <code>_lexicon.</code> in front — <code>app.bsky.feed.post</code> → <code>_lexicon.feed.bsky.app</code>.</li>
+			<li>Look up the <strong><abbr title="Domain Name System">DNS</abbr></strong> <strong>TXT</strong> record for that name, and use the value after <code>did=</code>.  (Do not try parent domains.)</li>
+			<li>Resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="Personal Data Server">PDS</abbr></strong>.</li>
+			<li>On the <strong><abbr title="Personal Data Server">PDS</abbr></strong>, call <code>com.atproto.repo.getRecord</code> with <code>repo</code> = the <strong><abbr title="decentralized identifier">DID</abbr></strong>, <code>collection</code> = <code>com.atproto.lexicon.schema</code>, and <code>rkey</code> = the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.</li>
+			<li>Check that the record's <code>$type</code>, <code>lexicon</code>, and <code>id</code> are what you expect.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/lexicon">AT Protocol Specification: Lexicon</a> (see “Lexicon Publication and Resolution”)</li>
+			<li><a href="https://atproto.com/specs/nsid">AT Protocol Specification: Namespaced Identifiers (NSIDs)</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/lexicon/schema.json"><code>com.atproto.lexicon.schema</code> lexicon</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/lexicon/resolveLexicon.json"><code>com.atproto.lexicon.resolveLexicon</code> lexicon</a></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
