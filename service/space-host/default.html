@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Space Host: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="social web" />
+<meta name="category" content="space host" />
+<meta name="category" content="spaces" />
+<meta name="category" content="sync" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Space Host</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Space Host</h1>
+			<p>
+				the service that answers for a permissioned “space” as a whole
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>space host</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) service that answers for a <strong>space</strong> as a whole.
+	</p>
+	<p>
+		The proposal that defines it puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			<strong>Space Host</strong>: a service that answers for a space as a whole, issuing credentials, enumerating writers, and routing notifications.
+		</p>
+	</blockquote>
+	<p>
+		So, a <strong>space host</strong> has 3 main jobs:
+	</p>
+	<ol>
+		<li>deciding who may read the <strong>space</strong> (by issuing <strong>space credentials</strong>),</li>
+		<li>keeping track of who has written to the <strong>space</strong> (the <strong>writer set</strong>), and</li>
+		<li>telling <strong><a href="../syncer/">syncers</a></strong> when something in the <strong>space</strong> has changed (notifications).</li>
+	</ol>
+	<p>
+		<strong>Note!</strong>
+		At the time of writing, <strong>spaces</strong> and <strong>space hosts</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		This article describes the proposal as of November 2026.
+	</p>
+	<section>
+		<h1>Spaces, Briefly</h1>
+		<p>
+			A <strong>space</strong> is a group of records that only some people (and some applications) are allowed to read — for example: a private forum, a paid newsletter, or a user's bookmarks.
+		</p>
+		<p>
+			A <strong>space</strong> is identified by 3 things — its <strong>space authority</strong> (a <strong><abbr title="decentralized identifier">DID</abbr></strong>), its <strong>space type</strong> (an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>), and its <strong>space key</strong> (a string):
+		</p>
+		<figure>
+			<pre>
+at://did:example:forum/space/com.atmoboards.forum/general
+     └───────┬───────┘       └─────────┬────────┘ └──┬──┘
+             │                         │             │
+      space authority             space type     space key
+			</pre>
+		</figure>
+		<p>
+			The records in a <strong>space</strong> are spread out.
+			Each user stores <em>their own</em> records for a <strong>space</strong> on <em>their own</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			(The proposal calls one user's records in one <strong>space</strong> a <strong>space repo</strong>, and the server that stores it a <strong>repo host</strong>.)
+		</p>
+		<p>
+			And, there are no <strong>relays</strong> and no firehose for <strong>spaces</strong>.
+			So, something needs to tie the <strong>space</strong> together.
+			That is the <strong>space host</strong>.
+		</p>
+		<p>
+			(For more on <strong>spaces</strong>, see: <a href="../syncer/"><abbr title="AT-Protocol">ATProto</abbr> Syncer</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>What a Space Host Is Not</h1>
+		<p>
+			It is easy to imagine that a <strong>space host</strong> stores all the records in a <strong>space</strong>.
+			It does not.
+		</p>
+		<p>
+			The proposal says:
+		</p>
+		<blockquote>
+			<p>
+				The space host (if distinct from the repo host) never hosts or distributes record data, only repo update metadata.
+			</p>
+		</blockquote>
+		<p>
+			<mark>A <strong>space host</strong> knows <em>who</em> has records in the <strong>space</strong>, and <em>when</em> they changed — but not <em>what</em> the records are.</mark>
+			The records themselves always come from the <strong>repo hosts</strong>.
+		</p>
+		<figure>
+			<pre>
+                    ┌───────────────────────────────┐
+                    │          space host           │
+                    │                               │
+                    │  • who may read               │
+                    │  • who has written            │
+                    │  • who to notify              │
+                    │                               │
+                    │  (no records)                 │
+                    └───────────────────────────────┘
+
+┌───────────────────────┐  ┌───────────────────────┐  ┌───────────────────────┐
+│ repo host (Alice)     │  │ repo host (Bob)       │  │ repo host (Carol)     │
+│                       │  │                       │  │                       │
+│ Alice's records       │  │ Bob's records         │  │ Carol's records       │
+└───────────────────────┘  └───────────────────────┘  └───────────────────────┘
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>Finding the Space Host</h1>
+		<p>
+			Every <strong>space</strong> has a <strong>space authority</strong> — the <strong><abbr title="decentralized identifier">DID</abbr></strong> at the start of its <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>.
+			That <strong><abbr title="decentralized identifier">DID</abbr></strong> might be a user's own <strong><abbr title="decentralized identifier">DID</abbr></strong> (for example, for their bookmarks).
+			Or, it might be a <strong><abbr title="decentralized identifier">DID</abbr></strong> made just for the <strong>space</strong> (for example, for a forum).
+		</p>
+		<p>
+			To find the <strong>space host</strong>, resolve the <strong>space authority</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong> exactly like any other account's — the <code>#atproto_pds</code> service in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> <em>is</em> the <strong>space host</strong>.
+			(See: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+		</p>
+		<figure>
+			<pre>
+space authority DID ───► DID document ───► #atproto_pds ───► space host
+			</pre>
+		</figure>
+		<p>
+			The proposal says:
+		</p>
+		<blockquote>
+			<p>
+				A space authority is resolved like any other atproto account. Its <code>#atproto_pds</code> service endpoint is the space host, and its <code>#atproto</code> key signs the space's credentials and any service auth it sends as the authority.
+			</p>
+		</blockquote>
+		<p>
+			So, usually, a <strong>space host</strong> is just a <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			(A <strong><abbr title="Personal Data Server">PDS</abbr></strong> is usually <em>both</em> a <strong>repo host</strong> for its accounts, and a <strong>space host</strong> for the <strong>spaces</strong> owned by its accounts.)
+			But, it does not have to be — any service that implements the required <strong>XRPC</strong> API end-points can be a <strong>space host</strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Job 1: Deciding Who May Read</h1>
+		<p>
+			To read a <strong>space</strong>, an application needs a token called a <strong>space credential</strong>.
+			The <strong>space host</strong> is what hands these out.
+		</p>
+		<p>
+			An application asks for a <strong>space credential</strong> by calling <code>com.atproto.space.authorizeSpaceSync</code> on the <strong>space host</strong>.
+			The request can include 2 kinds of proof:
+		</p>
+		<dl>
+			<dt>delegation token — <em>which user</em></dt>
+			<dd>
+				<p>
+					proof that a particular user has authorized this application.
+					It is made by the <em>user's</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong>, is signed with the user's <code>#atproto</code> key, is addressed (<code>aud</code>) to the <strong>space host</strong>, can only be used once, and expires after 60 seconds (by default).
+				</p>
+			</dd>
+
+			<dt>client attestation — <em>which application</em></dt>
+			<dd>
+				<p>
+					proof of which application is asking.
+					It is signed by the application's own key.
+					The <strong>space host</strong> checks it by fetching the application's <code>client-metadata.json</code>, and the public-keys listed there.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			A <strong>space</strong> might require either one, both, or neither.
+			(The proposal says a <strong>space host</strong> “MUST NOT reject a request solely because it includes a valid assertion that the space does not require.”)
+		</p>
+		<p>
+			Then the <strong>space host</strong> decides: yes or no.
+			<em>How</em> it decides is <em>not</em> part of the core protocol.
+			It is decided by the <strong>space</strong>'s <strong>policy</strong> (see below).
+		</p>
+		<p>
+			If the answer is yes, the <strong>space host</strong> returns a <strong>space credential</strong>.
+			A <strong>space credential</strong> is a <abbr title="JSON Web Token">JWT</abbr>, signed with the <strong>space authority</strong>'s <code>#atproto</code> key:
+		</p>
+		<figure>
+			<pre>
+{
+  "typ": "atproto-space-credential+jwt",
+  "alg": "ES256K",
+  "kid": "#atproto"
+}
+{
+  "iss": "did:example:space_did",
+  "sub": "at://did:example:space_did/space/com.example.space_type/space_key",
+  "cnf": {
+    "kid": "did:key:zDna..."
+  },
+  "iat": 1738368000,
+  "exp": 1738368600,
+  "jti": "9f8e7d6c5b4a3210fedcba9876543210"
+}
+			</pre>
+		</figure>
+		<dl>
+			<dt><code>iss</code></dt>
+			<dd>
+				<p>
+					the <strong>space authority</strong>.
+				</p>
+			</dd>
+
+			<dt><code>sub</code></dt>
+			<dd>
+				<p>
+					the <strong>space</strong> that may be read.
+				</p>
+			</dd>
+
+			<dt><code>cnf.kid</code></dt>
+			<dd>
+				<p>
+					the public-key the application sent as <code>credentialKey</code>.
+					This ties the <strong>space credential</strong> to the application — only whoever holds the matching private-key can use it.
+				</p>
+			</dd>
+
+			<dt><code>exp</code></dt>
+			<dd>
+				<p>
+					when it expires — 10 minutes after it was issued, by default (and at most 60 minutes).
+				</p>
+			</dd>
+
+			<dt><code>jti</code></dt>
+			<dd>
+				<p>
+					a unique identifier — used if the <strong>space credential</strong> needs to be revoked.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Since the <strong>space credential</strong> is signed with the <strong>space authority</strong>'s key, any <strong>repo host</strong> can check it by itself — without asking the <strong>space host</strong>.
+		</p>
+		<p>
+			The <strong>space host</strong> also returns the <strong>space</strong>'s current revision (<code>spaceRev</code>).
+		</p>
+		<section>
+			<h1>Taking Access Away</h1>
+			<p>
+				The main way a <strong>space host</strong> takes access away is simple — it stops saying yes.
+				Since a <strong>space credential</strong> is short-lived, the application soon loses access.
+			</p>
+			<p>
+				If that is not fast enough, the <strong>space host</strong> may call <code>com.atproto.space.notifyCredentialsRevoked</code> on the <strong>repo hosts</strong> in the <strong>space</strong>, listing the <code>jti</code> of each revoked <strong>space credential</strong>.
+				It is up to the <strong>space host</strong> to decide when this is worth doing.
+				(For a small <strong>space</strong> it is cheap, for a huge one it is not.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Job 2: Keeping Track of Who Has Written</h1>
+		<p>
+			Because the records in a <strong>space</strong> are spread across many <strong>repo hosts</strong>, an application needs to know <em>whose</em> <strong>space repos</strong> to pull.
+			The <strong>space host</strong> keeps that list.
+			It is called the <strong>writer set</strong>.
+		</p>
+		<p>
+			Here is how it works.
+			Whenever a user writes a record to a <strong>space</strong>, the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> (the <strong>repo host</strong>) calls <code>com.atproto.space.notifyRepoUpdate</code> on the <strong>space host</strong>, with the <strong>space repo</strong>'s new revision (<code>repoRev</code>) and digest (<code>data</code>).
+		</p>
+		<figure>
+			<pre>
+┌───────┐  write  ┌─────────────┐  notifyRepoUpdate   ┌────────────┐
+│ Alice │ ──────► │ Alice's PDS │ ──────────────────► │ space host │
+└───────┘         │ (repo host) │  repoRev, data      └────────────┘
+                  └─────────────┘
+			</pre>
+		</figure>
+		<p>
+			When the <strong>space host</strong> receives one of these, it:
+		</p>
+		<ul>
+			<li>checks the caller, using service auth,</li>
+			<li>rejects it if the account is <em>not</em> allowed to write to the <strong>space</strong>,</li>
+			<li>ignores it if the <code>repoRev</code> is not newer than the one it already has (or is in the future), and</li>
+			<li>otherwise, records the <strong>space repo</strong>'s new state.</li>
+		</ul>
+		<p>
+			(The <strong>space host</strong> is <em>not</em> expected to check the <code>data</code> digest — it does not have the records to check it against.)
+		</p>
+		<p>
+			Applications get the <strong>writer set</strong> by calling <code>com.atproto.space.listWriters</code> on the <strong>space host</strong>.
+			For each account, it returns the <strong>space repo</strong>'s current <code>repoRev</code> and <code>data</code>.
+			An application can also ask for only the changes <em>since</em> some earlier <strong>space</strong> revision.
+		</p>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				The <strong>writer set</strong> is <em>not</em> a member list.
+				It only lists accounts that have <em>written at least one record</em>.
+				People who are only allowed to read are never listed.
+			</li>
+			<li>
+				The <strong>space authority</strong> is always part of the <strong>writer set</strong>.
+			</li>
+			<li>
+				An account can be removed from the <strong>writer set</strong> — for example, if it loses write access, or with <code>com.atproto.space.removeWriter</code>.
+				Removals are sequenced like writes.
+			</li>
+			<li>
+				The <strong>space host</strong> MAY “garbage collect” empty and removed entries — but SHOULD wait at least 72 hours first.
+			</li>
+			<li>
+				The <strong>space host</strong> decides which writers it tracks.
+				It may leave out (or rate-limit) any of them — for example, for spam.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Job 3: Telling Syncers When Something Changes</h1>
+		<p>
+			An application that keeps its own copy of a <strong>space</strong> is called a <strong><a href="../syncer/">syncer</a></strong>.
+			Rather than making every <strong>syncer</strong> check every <strong>space repo</strong> over and over again, the <strong>space host</strong> tells them when something changes.
+		</p>
+		<figure>
+			<pre>
+┌─────────────┐  notifyRepoUpdate   ┌────────────┐  notifySpaceUpdate  ┌──────────┐
+│  repo host  │ ──────────────────► │ space host │ ──────────────────► │ syncer 1 │
+└─────────────┘                     └────────────┘          │          └──────────┘
+                                                            │          ┌──────────┐
+                                                            └────────► │ syncer 2 │
+                                                                       └──────────┘
+			</pre>
+		</figure>
+		<section>
+			<h1>Registering</h1>
+			<p>
+				A <strong>syncer</strong> registers for notifications by including a <code>notify</code> object when it calls <code>authorizeSpaceSync</code>:
+			</p>
+			<figure>
+				<pre>
+"notify": {
+  "endpoint": "https://syncer.example.com",
+  "token": "kq7Vx2Rj9mPzL4wN8tBcY1hF6sDgE3aQoU5iZ0nKpWe"
+}
+				</pre>
+			</figure>
+			<p>
+				Before creating a <em>new</em> registration, the <strong>space host</strong> checks that the <code>endpoint</code> really wants it.
+				It calls <code>com.atproto.space.confirmRegistration</code> on the <code>endpoint</code>, with the <code>token</code>, the <strong>space</strong>, and a random <code>challenge</code>.
+				The <strong>syncer</strong> must echo the <code>challenge</code> back.
+				If it does not, the <strong>space host</strong> rejects the request.
+			</p>
+			<p>
+				A registration is identified by its <code>endpoint</code> <em>and</em> <code>token</code> together.
+				Each time a <strong>syncer</strong> calls <code>authorizeSpaceSync</code> again with the same pair, the registration is renewed.
+			</p>
+		</section>
+		<section>
+			<h1>Notifying</h1>
+			<p>
+				When the <strong>space host</strong> gets a valid <code>notifyRepoUpdate</code>, it calls <code>com.atproto.space.notifySpaceUpdate</code> on every registered <strong>syncer</strong>.
+			</p>
+			<p>
+				The <strong>space host</strong> gives the <strong>space</strong> as a whole its own revision (a <abbr title="timestamp identifier">TID</abbr>), which goes up with every change.
+				Each notification includes both the <em>current</em> and the <em>previous</em> <strong>space</strong> revision.
+				That way, a <strong>syncer</strong> can tell if it missed one.
+			</p>
+			<p>
+				Notifications contain <em>no</em> records.
+				They only say that a <strong>space repo</strong> has a new revision, or that an account was removed from the <strong>writer set</strong>, or that something happened to the <strong>space</strong> itself (such as being deleted).
+			</p>
+			<p>
+				For ordinary updates, the <strong>space host</strong> only needs to make a “reasonable-effort” to deliver them.
+				(If a <strong>syncer</strong> misses one, it can catch up with <code>listWriters</code>.)
+			</p>
+		</section>
+		<section>
+			<h1>Expiring</h1>
+			<p>
+				A registration stays active only while the <strong>space credential</strong> from the <strong>syncer</strong>'s latest <code>authorizeSpaceSync</code> is still valid.
+				After that, the registration <em>lapses</em>.
+			</p>
+			<p>
+				The next time the <strong>space</strong> changes (however long after), the <strong>space host</strong> sends the lapsed <strong>syncer</strong> a notification saying that its registration has expired — instead of the update.
+				And then, nothing more (other than a deletion notice), until the <strong>syncer</strong> calls <code>authorizeSpaceSync</code> again.
+			</p>
+			<p>
+				Unlike ordinary updates, the <strong>space host</strong> is responsible for <em>reliably</em> delivering this expiry notice — retrying with exponential backoff for at least 72 hours.
+				If it still cannot deliver it, it may drop the registration.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Policies</h1>
+		<p>
+			How does a <strong>space host</strong> decide who may read, and whose writes to track?
+			The core protocol does not say.
+			Instead, each <strong>space</strong> has a <strong>policy</strong>.
+		</p>
+		<p>
+			A <strong>policy</strong> is a <abbr title="JavaScript Object Notation">JSON</abbr> object, identified by its <code>$type</code>.
+			For example:
+		</p>
+		<figure>
+			<pre>
+{
+  "$type": "com.atproto.memberspace.policy",
+  "publicRead": false,
+  "publicWrite": false
+}
+			</pre>
+		</figure>
+		<p>
+			Every <strong><abbr title="Personal Data Server">PDS</abbr></strong> MUST support these 3 baseline <strong>policies</strong>:
+		</p>
+		<dl>
+			<dt><code>com.atproto.personalspace.policy</code></dt>
+			<dd>
+				<p>
+					only the <strong>space authority</strong>'s own account has access.
+					For personal data, such as bookmarks, mutes, or drafts.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.memberspace.policy</code></dt>
+			<dd>
+				<p>
+					access is checked against a member list kept by the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+					Each member has a <code>read</code> and a <code>write</code> true/false value.
+					It also has options to let anyone read (<code>publicRead</code>), let anyone write (<code>publicWrite</code>), and limit which applications may read (<code>allowedApps</code>).
+					The member list is managed with <code>com.atproto.memberspace.putMembers</code>, <code>removeMembers</code>, and <code>listMembers</code>.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.managedspace.policy</code></dt>
+			<dd>
+				<p>
+					the decision is handed off to an outside service — the <strong>managing app</strong>.
+					The <strong>space host</strong> asks it by calling <code>checkAccess</code> on it.
+					This allows rules like “only people I follow” or “only paying subscribers”, without the <strong><abbr title="Personal Data Server">PDS</abbr></strong> having to keep a member list.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Under <em>every</em> <strong>policy</strong>, the <strong>space authority</strong>'s own account is always allowed to read and write.
+		</p>
+		<p>
+			A <strong>space host</strong> may support other <strong>policies</strong> too.
+			If asked to use a <strong>policy</strong> it does not support, it MUST fail with an <code>UnsupportedPolicy</code> error.
+		</p>
+		<p>
+			By default, a <strong>space</strong>'s <strong>policy</strong> and member list are private — only the <strong>space authority</strong> can see them.
+			But, <code>memberspace</code> and <code>managedspace</code> have a <code>publishPolicy</code> flag, and <code>memberspace</code> also has a <code>publishMembers</code> flag.
+			When set, the <strong>space host</strong> publishes that information as records in the <strong>space authority</strong>'s own <strong>space repo</strong>, so that readers can see it.
+			It is the <strong>space host</strong>'s job to keep those records in sync with the actual configuration.
+		</p>
+	</section>
+	<section>
+		<h1>Deleting a Space</h1>
+		<p>
+			When a <strong>space</strong> is deleted, the <strong>space host</strong>:
+		</p>
+		<ol>
+			<li>stops issuing <strong>space credentials</strong> for it,</li>
+			<li>deletes all the records in the <strong>space authority</strong>'s own <strong>space repo</strong>,</li>
+			<li>notifies <em>every</em> registered <strong>syncer</strong> — including ones whose registrations have lapsed — <em>reliably</em>, and</li>
+			<li>answers any later <code>authorizeSpaceSync</code> for that <strong>space</strong> with a <code>SpaceDeleted</code> error.</li>
+		</ol>
+		<p>
+			The <strong>space host</strong> SHOULD remember the deletion until every <strong>syncer</strong> that was registered at the time has been notified (or had its registration dropped).
+		</p>
+		<p>
+			Note that the <strong>space host</strong> does <em>not</em> delete other users' records.
+			Those belong to the users.
+			They just become unreadable to everyone but their owners.
+		</p>
+	</section>
+	<section>
+		<h1>Other Responsibilities</h1>
+		<dl>
+			<dt>takedowns and deactivation</dt>
+			<dd>
+				<p>
+					If the <strong>space authority</strong>'s account is taken down or deactivated, its <strong>spaces</strong> are suspended.
+					The <strong>space host</strong> answers <code>authorizeSpaceSync</code> and <code>listWriters</code> with <code>RepoTakendown</code> or <code>RepoDeactivated</code>.
+					Registrations lapse, but are not dropped.
+					(This is <em>not</em> the same as deleting the <strong>space</strong>.)
+				</p>
+			</dd>
+
+			<dt>account migration</dt>
+			<dd>
+				<p>
+					A <strong>space host</strong> holds some state that is not stored as records — such as a <strong>space</strong>'s <strong>policy</strong> and member list.
+					When the <strong>space authority</strong>'s account moves to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong>, this is moved as a <strong>space meta archive</strong>, using <code>com.atproto.space.exportSpaceMeta</code> and <code>importSpaceMeta</code>.
+					Notification registrations are <em>not</em> moved — <strong>syncers</strong> re-register when they notice the <code>#atproto_pds</code> has changed.
+				</p>
+			</dd>
+		</dl>
+	</section>
+	<section>
+		<h1>XRPC API End-Points</h1>
+		<p>
+			Here are the <strong>XRPC</strong> API end-points that matter to a <strong>space host</strong>.
+		</p>
+		<p>
+			End-points that a <strong>space host</strong> implements:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Called By</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.space.authorizeSpaceSync</code></td>
+						<td>applications (syncers)</td>
+						<td>issue a <strong>space credential</strong>; optionally register for notifications</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.listWriters</code></td>
+						<td>applications (syncers)</td>
+						<td>list the <strong>writer set</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.notifyRepoUpdate</code></td>
+						<td>repo hosts</td>
+						<td>report that a <strong>space repo</strong> has a new revision</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.removeWriter</code></td>
+						<td>the space authority's apps</td>
+						<td>remove an account from the <strong>writer set</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.getSpace</code></td>
+						<td>apps, with OAuth (<code>read_self</code>)</td>
+						<td>describe a <strong>space</strong> and its current <strong>policy</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.exportSpaceMeta</code></td>
+						<td>apps, with OAuth (<code>read_self</code>)</td>
+						<td>download a <strong>space meta archive</strong> (for migration)</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			(When the <strong>space host</strong> is a <strong><abbr title="Personal Data Server">PDS</abbr></strong>, it also implements <code>createSpace</code>, <code>updateSpace</code>, <code>deleteSpace</code>, <code>importSpaceMeta</code>, and the <code>memberspace</code> end-points.)
+		</p>
+		<p>
+			End-points that a <strong>space host</strong> calls on other services:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Called On</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.space.confirmRegistration</code></td>
+						<td>syncers</td>
+						<td>confirm a new notification registration</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.notifySpaceUpdate</code></td>
+						<td>syncers</td>
+						<td>tell a <strong>syncer</strong> that the <strong>space</strong> changed (or was deleted, or its registration expired)</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.notifyCredentialsRevoked</code></td>
+						<td>repo hosts</td>
+						<td>revoke <strong>space credentials</strong> early</td>
+					</tr>
+					<tr>
+						<td><code>checkAccess</code></td>
+						<td>the managing app</td>
+						<td>ask whether an account may read and write (<code>managedspace</code> only)</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>space host</strong>:
+		</p>
+		<ol>
+			<li>is found by resolving the <strong>space authority</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <code>#atproto_pds</code> (usually it is just a <strong><abbr title="Personal Data Server">PDS</abbr></strong>),</li>
+			<li>decides who may read the <strong>space</strong>, according to the <strong>space</strong>'s <strong>policy</strong>, and issues short-lived <strong>space credentials</strong>,</li>
+			<li>keeps the <strong>writer set</strong> up-to-date, from <code>notifyRepoUpdate</code> calls made by <strong>repo hosts</strong>,</li>
+			<li>notifies registered <strong>syncers</strong> when something changes, and</li>
+			<li>never stores or hands out the records themselves.</li>
+		</ol>
+		<p>
+			Again, this is all a <em>proposal</em>.
+			Details are likely to change.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
