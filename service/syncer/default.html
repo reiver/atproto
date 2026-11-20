@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Syncer: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="social web" />
+<meta name="category" content="spaces" />
+<meta name="category" content="sync" />
+<meta name="category" content="syncer" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Syncer</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Syncer</h1>
+			<p>
+				the service that keeps its own copy of a permissioned “space” up-to-date
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>syncer</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>service</strong> that keeps its own copy of a <strong>space</strong> in sync, by pulling data from the servers that host it.
+	</p>
+	<p>
+		The proposal that defines it puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			<strong>Syncer</strong>: an application that keeps its own copy of a space in sync by pulling from repo hosts.
+		</p>
+	</blockquote>
+	<p>
+		To understand what a <strong>syncer</strong> is, you first need to understand what a <strong>space</strong> is.
+		And, why <strong>spaces</strong> need something like a <strong>syncer</strong> at all.
+	</p>
+	<p>
+		<strong>Note!</strong>
+		At the time of writing, <strong>spaces</strong> and <strong>syncers</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		This article describes the proposal as of November 2026.
+	</p>
+	<section>
+		<h1>Public Data versus Permissioned Data</h1>
+		<p>
+			Most of <strong><abbr title="AT-Protocol">ATProto</abbr></strong> is about <strong>public</strong> data.
+			(The proposal calls this <strong>public broadcast</strong>.)
+		</p>
+		<p>
+			With public data:
+		</p>
+		<ul>
+			<li>each user has a <strong>repository</strong> on their <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>),</li>
+			<li>the records in that <strong>repository</strong> (posts, likes, follows, etc) can be read by anyone,</li>
+			<li><strong>relays</strong> collect changes from many <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> into a single stream (the “firehose”), and</li>
+			<li>applications read the firehose to build their views.</li>
+		</ul>
+		<p>
+			But, not all data should be public.
+			The proposal lists some examples of data that should <em>not</em> be:
+		</p>
+		<ul>
+			<li><strong>personal data</strong> — bookmarks, mutes, drafts,</li>
+			<li><strong>gated content</strong> — paid newsletters, subscriber-only posts,</li>
+			<li><strong>socially shared</strong> — private posts, stories,</li>
+			<li><strong>groups</strong> — private forums, communities, group chats.</li>
+		</ul>
+		<p>
+			The proposal calls this <strong>permissioned data</strong>.
+			And, the proposal adds a new part to <strong><abbr title="AT-Protocol">ATProto</abbr></strong> for it — called <strong><abbr title="AT-Protocol">ATProto</abbr> spaces</strong>.
+		</p>
+		<p>
+			(Note that <strong>spaces</strong> are about <em>access control</em>, not secrecy.
+			They are <em>not</em> end-to-end encrypted.
+			The servers that handle the data can read it.)
+		</p>
+	</section>
+	<section>
+		<h1>Spaces</h1>
+		<p>
+			A <strong>space</strong> is a group of records that only some people (and some applications) are allowed to read.
+			For example: a private forum.
+		</p>
+		<p>
+			A <strong>space</strong> is identified by 3 things:
+		</p>
+		<dl>
+			<dt>space authority</dt>
+			<dd>
+				<p>
+					a <strong><abbr title="decentralized identifier">DID</abbr></strong> — the owner of the <strong>space</strong>, who decides who may read it.
+				</p>
+			</dd>
+
+			<dt>space type</dt>
+			<dd>
+				<p>
+					an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> — what kind of <strong>space</strong> it is (such as <code>com.atmoboards.forum</code>).
+				</p>
+			</dd>
+
+			<dt>space key (<code>skey</code>)</dt>
+			<dd>
+				<p>
+					a string — to tell apart different <strong>spaces</strong> of the same type, with the same owner.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			These 3 are put together into an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>, with the word <code>space</code> in it:
+		</p>
+		<figure>
+			<pre>
+at://did:example:forum/space/com.atmoboards.forum/general
+     └───────┬───────┘       └─────────┬────────┘ └──┬──┘
+             │                         │             │
+      space authority             space type     space key
+			</pre>
+		</figure>
+		<p>
+			Here is the important part —
+			the records in a <strong>space</strong> are <em>not</em> all stored in one place.
+		</p>
+		<p>
+			Each user stores <em>their own</em> records for a <strong>space</strong> on <em>their own</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			(The proposal calls one user's records in one <strong>space</strong> a <strong>space repo</strong>.)
+			So, if Alice, Bob, and Carol all post in the same private forum, then the forum's data is spread across 3 (possibly different) servers:
+		</p>
+		<figure>
+			<pre>
+                        ┌─────────────────────────────┐
+                        │ space:                      │
+                        │ at://…/com.atmoboards.forum │
+                        │      /general               │
+                        └──────────────┬──────────────┘
+                                       │
+            ┌──────────────────────────┼──────────────────────────┐
+            │                          │                          │
+            ▼                          ▼                          ▼
+┌───────────────────────┐  ┌───────────────────────┐  ┌───────────────────────┐
+│ Alice's PDS           │  │ Bob's PDS             │  │ Carol's PDS           │
+│                       │  │                       │  │                       │
+│ Alice's space repo    │  │ Bob's space repo      │  │ Carol's space repo    │
+└───────────────────────┘  └───────────────────────┘  └───────────────────────┘
+			</pre>
+		</figure>
+		<p>
+			And, unlike with public data, there are no <strong>relays</strong> and no firehose for <strong>spaces</strong>.
+		</p>
+		<p>
+			So, how does an application show you the whole forum?
+			It has to go to each of those servers, and pull the data itself.
+			That is what a <strong>syncer</strong> does.
+		</p>
+	</section>
+	<section>
+		<h1>The Services Involved</h1>
+		<p>
+			There are 3 roles that a <strong>syncer</strong> deals with:
+		</p>
+		<dl>
+			<dt>repo host</dt>
+			<dd>
+				<p>
+					stores and serves users' <strong>space repos</strong>.
+					(Usually the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)
+				</p>
+			</dd>
+
+			<dt>space host</dt>
+			<dd>
+				<p>
+					answers for a <strong>space</strong> as a whole — it hands out permission to read the <strong>space</strong>, keeps the list of who has written to the <strong>space</strong>, and sends out notifications when something changes.
+					(Usually the <strong>space authority</strong>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)
+				</p>
+			</dd>
+
+			<dt>syncer</dt>
+			<dd>
+				<p>
+					keeps its own copy of the <strong>space</strong>, by pulling from the <strong>repo hosts</strong>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Notice that the <strong>space host</strong> does <em>not</em> hand out the records themselves.
+			It only knows <em>who</em> has records, and <em>when</em> they changed.
+			The records themselves always come from the <strong>repo hosts</strong>.
+		</p>
+		<figure>
+			<pre>
+                         ┌──────────────┐
+                         │  space host  │
+                         └──────────────┘
+                           ▲          │
+       1. ask permission   │          │  3. "something changed"
+       2. ask who wrote    │          │     notifications
+                           │          ▼
+                         ┌──────────────┐
+                         │    syncer    │
+                         └──────────────┘
+                                │
+                 4. pull the    │
+                    records     │
+             ┌──────────────────┼──────────────────┐
+             ▼                  ▼                  ▼
+      ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+      │  repo host  │    │  repo host  │    │  repo host  │
+      │  (Alice)    │    │  (Bob)      │    │  (Carol)    │
+      └─────────────┘    └─────────────┘    └─────────────┘
+			</pre>
+		</figure>
+		<p>
+			Who would run a <strong>syncer</strong>?
+			Any application that needs to show (or process) the data in a <strong>space</strong> — for example, an <strong>AppView</strong> for a private forum.
+			The proposal also says that a moderation service “must hold a space credential like any other syncer”.
+		</p>
+		<p>
+			An application that serves many users only needs to pull each <strong>space repo</strong> once.
+			It then serves its users from its own copy.
+		</p>
+	</section>
+	<section>
+		<h1>What a Syncer Does</h1>
+		<p>
+			Here is the life of a <strong>syncer</strong>, step-by-step.
+		</p>
+		<section>
+			<h1>Step 1: Get a Space Credential</h1>
+			<p>
+				A <strong>syncer</strong> cannot just read a <strong>space</strong>.
+				It needs permission.
+				That permission is a token called a <strong>space credential</strong>.
+			</p>
+			<p>
+				To get a <strong>space credential</strong>, the <strong>syncer</strong> calls <code>com.atproto.space.authorizeSpaceSync</code> on the <strong>space host</strong>.
+				(To find the <strong>space host</strong>, resolve the <strong>space authority</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="Personal Data Server">PDS</abbr></strong> — see: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+			</p>
+			<p>
+				The request looks like this:
+			</p>
+			<figure>
+				<pre>
+{
+  "space": "at://did:example:space_did/space/com.example.space_type/space_key",
+  "credentialKey": "did:key:zDna...",
+  "delegationToken": "eyJ...",
+  "clientAttestation": "eyJ...",
+  "notify": {
+    "endpoint": "https://syncer.example.com",
+    "token": "kq7Vx2Rj9mPzL4wN8tBcY1hF6sDgE3aQoU5iZ0nKpWe"
+  }
+}
+				</pre>
+			</figure>
+			<dl>
+				<dt><code>credentialKey</code></dt>
+				<dd>
+					<p>
+						(required) a public-key that the <strong>syncer</strong> just made (a P-256 key, written as a <code>did:key</code>).
+						The <strong>space credential</strong> gets tied to this key, so that only the <strong>syncer</strong> can use it.
+					</p>
+				</dd>
+
+				<dt><code>delegationToken</code></dt>
+				<dd>
+					<p>
+						(if the <strong>space</strong> requires it) proof that a user who is allowed to read the <strong>space</strong> has authorized this application.
+						The <strong>syncer</strong> gets it from that user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>, using <code>com.atproto.space.getDelegationToken</code>.
+						(This requires the user to have given the application permission through OAuth.)
+					</p>
+				</dd>
+
+				<dt><code>clientAttestation</code></dt>
+				<dd>
+					<p>
+						(if the <strong>space</strong> requires it) proof of <em>which application</em> is asking.
+					</p>
+				</dd>
+
+				<dt><code>notify</code></dt>
+				<dd>
+					<p>
+						(optional) where to send notifications when the <strong>space</strong> changes.
+						(See step 4.)
+					</p>
+				</dd>
+			</dl>
+			<p>
+				If the <strong>space authority</strong> says yes, the response contains the <strong>space credential</strong>, plus the <strong>space</strong>'s current revision.
+			</p>
+			<p>
+				A <strong>space credential</strong> is short-lived — 10 minutes by default (and at most 60 minutes).
+				So, a <strong>syncer</strong> calls <code>authorizeSpaceSync</code> again, before its <strong>space credential</strong> expires.
+				(This is also how access gets taken away — if the <strong>space authority</strong> stops saying yes, the <strong>syncer</strong>'s <strong>space credential</strong> soon expires.)
+			</p>
+			<p>
+				When the <strong>syncer</strong> uses the <strong>space credential</strong>, it sends it in the <code>Authorization</code> header, along with an <abbr title="HyperText Transfer Protocol">HTTP</abbr> Message Signature made with the key from <code>credentialKey</code>:
+			</p>
+			<figure>
+				<pre>
+Authorization: Atproto-Space-Credential &lt;space-credential&gt;
+Atproto-Space-Audience: did:plc:repoOwner
+Signature-Input: sig=("authorization" "atproto-space-audience");tag="atproto-space-credential"
+Signature: sig=:wNmSUA...:
+				</pre>
+			</figure>
+			<p>
+				One <strong>space credential</strong> works with <em>every</em> <strong>repo host</strong> in the <strong>space</strong>.
+				The <code>Atproto-Space-Audience</code> header says which user's <strong>space repo</strong> the request is for.
+			</p>
+		</section>
+		<section>
+			<h1>Step 2: Find Out Who Has Written to the Space</h1>
+			<p>
+				Since the records in a <strong>space</strong> are spread across many servers, a <strong>syncer</strong> first needs to know <em>whose</em> <strong>space repos</strong> to pull.
+			</p>
+			<p>
+				For this, the <strong>syncer</strong> calls <code>com.atproto.space.listWriters</code> on the <strong>space host</strong>.
+				It returns the <strong>writer set</strong> — the list of accounts that have written at least one record to the <strong>space</strong>.
+				For each account, it also returns that <strong>space repo</strong>'s current revision (<code>repoRev</code>) and digest (<code>data</code>).
+			</p>
+			<p>
+				Two things to note:
+			</p>
+			<ul>
+				<li>The <strong>writer set</strong> is <em>not</em> a member list.  It only lists accounts that have <em>written</em> something.  (People who only read are never listed.)</li>
+				<li>The <strong>writer set</strong> is only a starting point.  The <strong>repo host</strong> is the source of truth for what is actually in each <strong>space repo</strong>.</li>
+			</ul>
+			<p>
+				A <strong>syncer</strong> does not treat a <strong>space repo</strong> that is <em>not</em> in the <strong>writer set</strong> as part of the <strong>space</strong>.
+			</p>
+		</section>
+		<section>
+			<h1>Step 3: Pull Each Space Repo</h1>
+			<p>
+				Next, for each account in the <strong>writer set</strong>, the <strong>syncer</strong> pulls that account's <strong>space repo</strong> from its <strong>repo host</strong>.
+				(To find the <strong>repo host</strong>, resolve the account's <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)
+			</p>
+			<p>
+				There are 2 ways to do this:
+			</p>
+			<dl>
+				<dt>the whole thing — <code>com.atproto.space.getRepo</code></dt>
+				<dd>
+					<p>
+						downloads the whole <strong>space repo</strong>, as a single file (a <strong>STAR</strong> archive).
+						This is used the first time, or whenever the <strong>syncer</strong>'s copy cannot be fixed any other way.
+						(The proposal calls this <strong>full-state recovery</strong>.)
+					</p>
+				</dd>
+
+				<dt>just the changes — <code>com.atproto.space.listRepoOps</code></dt>
+				<dd>
+					<p>
+						returns the list of changes (creates, updates, deletes) since a given revision.
+						This is the normal way to stay up-to-date.
+						(The proposal calls this <strong>incremental sync</strong>.)
+					</p>
+				</dd>
+			</dl>
+			<p>
+				How does a <strong>syncer</strong> know whether its copy is correct?
+			</p>
+			<p>
+				Each <strong>space repo</strong> has a <strong>commit</strong>.
+				The <strong>commit</strong> includes a digest (<code>data</code>) computed from <em>all</em> the records in the <strong>space repo</strong>.
+				The <strong>syncer</strong> computes the same digest over <em>its own</em> copy.
+				If the 2 digests are the same, then the copy is exactly up-to-date.
+				If they are different, then the copy is behind (or damaged), and the <strong>syncer</strong> falls back to downloading the whole thing.
+			</p>
+			<figure>
+				<pre>
+         repo host                              syncer
+┌──────────────────────────┐          ┌──────────────────────────┐
+│ records                  │          │ copy of records          │
+│           │              │          │           │              │
+│           ▼              │          │           ▼              │
+│ digest:  q3J0…           │──(same)──│ digest:  q3J0…           │
+└──────────────────────────┘          └──────────────────────────┘
+				</pre>
+			</figure>
+			<p>
+				(The digest is a special kind of hash called a <strong>set hash</strong> — specifically, <strong>LtHash</strong>.
+				It does not depend on the <em>order</em> records were written in.
+				And, a record can be added or removed from it without re-hashing everything.
+				So, the <strong>syncer</strong> can keep it up-to-date as it applies each change.)
+			</p>
+			<p>
+				Because the correctness check is done with the digest, the proposal calls the sync <em>self-healing</em> — if a <strong>syncer</strong> misses a change, the next sync will notice.
+			</p>
+			<p>
+				A <strong>syncer</strong> also needs to fetch any <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> (images, videos, etc) that the records refer to.
+				It uses <code>com.atproto.space.listBlobs</code> and <code>com.atproto.space.getBlob</code> for that.
+			</p>
+		</section>
+		<section>
+			<h1>Step 4: Get Notified of Changes</h1>
+			<p>
+				A <strong>syncer</strong> could keep checking every <strong>space repo</strong> over and over again (polling).
+				But, that is wasteful.
+				So, instead, a <strong>syncer</strong> can ask to be <em>notified</em> when something changes.
+			</p>
+			<p>
+				To do this, the <strong>syncer</strong> includes the <code>notify</code> object when it calls <code>authorizeSpaceSync</code> (step 1):
+			</p>
+			<dl>
+				<dt><code>endpoint</code></dt>
+				<dd>
+					<p>
+						the base <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> <abbr title="Uniform Resource Locator">URL</abbr> of the <strong>syncer</strong>.
+					</p>
+				</dd>
+
+				<dt><code>token</code></dt>
+				<dd>
+					<p>
+						a secret, made up by the <strong>syncer</strong>.
+						(For example, 32 random bytes, base64 encoded.)
+						The <strong>syncer</strong> should use a different <code>token</code> for each <strong>space</strong>.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				This means a <strong>syncer</strong> is not only a client — it is also a <em>server</em>.
+				It must implement these 2 <strong>XRPC</strong> API end-points, which the <strong>space host</strong> calls:
+			</p>
+			<dl>
+				<dt><code>com.atproto.space.confirmRegistration</code></dt>
+				<dd>
+					<p>
+						called once, before registering.
+						The <strong>syncer</strong> checks that the <code>token</code> is one it made for that <strong>space</strong>, and echoes back the <code>challenge</code> it was sent.
+					</p>
+				</dd>
+
+				<dt><code>com.atproto.space.notifySpaceUpdate</code></dt>
+				<dd>
+					<p>
+						called whenever something changes — a <strong>space repo</strong> got a new revision, an account was removed from the <strong>writer set</strong>, the <strong>space</strong> was deleted, or the <strong>syncer</strong>'s registration has expired.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				Here is how a change flows to a <strong>syncer</strong>:
+			</p>
+			<figure>
+				<pre>
+┌───────┐  write  ┌─────────────┐  notifyRepoUpdate  ┌────────────┐  notifySpaceUpdate  ┌────────┐
+│ Alice │ ──────► │ Alice's PDS │ ─────────────────► │ space host │ ──────────────────► │ syncer │
+└───────┘         │ (repo host) │                    └────────────┘                     └────────┘
+                  └─────────────┘                                                           │
+                         ▲                                                                  │
+                         │                       listRepoOps                                │
+                         └──────────────────────────────────────────────────────────────────┘
+				</pre>
+			</figure>
+			<p>
+				Notice that the notification does <em>not</em> contain any records.
+				It only says “this <strong>space repo</strong> has changed”.
+				The <strong>syncer</strong> then goes to the <strong>repo host</strong> to get the change.
+			</p>
+			<p>
+				Notifications can be missed.
+				Each notification includes the <strong>space</strong>'s current and previous revision, so a <strong>syncer</strong> can notice a gap.
+				When it does, (or after the <strong>syncer</strong> has been down for a while), it calls <code>listWriters</code> with a <code>since</code> revision, to find out what it missed.
+				(If it has been more than 72 hours, the <strong>syncer</strong> should re-list the whole <strong>writer set</strong> instead.)
+			</p>
+		</section>
+		<section>
+			<h1>Step 5: Check That the Data Is Real</h1>
+			<p>
+				With public data, records are <em>signed</em>.
+				So, anyone can prove who wrote them.
+			</p>
+			<p>
+				With <strong>spaces</strong>, that would be a problem.
+				If private data leaked, the signatures would prove it was real.
+				So, <strong>space repos</strong> do <em>not</em> use signatures.
+			</p>
+			<p>
+				Instead, the <strong>syncer</strong> and the <strong>repo host</strong> agree on a temporary shared secret, and the <strong>repo host</strong> uses it to compute a <strong><abbr title="Message Authentication Code">MAC</abbr></strong> (<em>Message Authentication Code</em>) over the <strong>commit</strong> or record.
+				The <strong>syncer</strong> checks the <strong><abbr title="Message Authentication Code">MAC</abbr></strong> with the same secret.
+			</p>
+			<p>
+				This convinces the <strong>syncer</strong> that the data is real.
+				But, since the <strong>syncer</strong> knows the secret too, it could have made the <strong><abbr title="Message Authentication Code">MAC</abbr></strong> itself — so the <strong><abbr title="Message Authentication Code">MAC</abbr></strong> proves nothing to anyone <em>else</em>.
+			</p>
+			<p>
+				How it works, briefly:
+			</p>
+			<ul>
+				<li>each account with <strong>space repos</strong> has an extra key in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, with the <code>id</code> <code><var>DID</var>#atproto_kem</code>,</li>
+				<li>for each request, the <strong>syncer</strong> makes a new temporary key, and combines it with the <code>#atproto_kem</code> key to get the shared secret (using <strong><abbr title="Hybrid Public Key Encryption">HPKE</abbr></strong>, <abbr title="Request for Comments">RFC</abbr> 9180),</li>
+				<li>the <strong>syncer</strong> sends its temporary public-key in an <code>Accept-Signature</code> header,</li>
+				<li>the <strong>repo host</strong> answers with an <code>Atproto-Space-Commit</code> (or <code>Atproto-Space-Record</code>) header, and an <code>hmac-sha256</code> <abbr title="HyperText Transfer Protocol">HTTP</abbr> Message Signature over it.</li>
+			</ul>
+			<p>
+				For example:
+			</p>
+			<figure>
+				<pre>
+Accept-Signature: mac=("atproto-space-commit";sf);keyid="did:key:zDna...";tag="atproto-space-commit"
+				</pre>
+			</figure>
+			<p>
+				And the <strong>repo host</strong> responds with:
+			</p>
+			<figure>
+				<pre>
+Atproto-Space-Commit: ver=1, repo="did:example:alice", space="at://did:example:forum/space/com.atmoboards.forum/general", rev="3mwcj3b6uak2f", data=:q3J0...=:
+Signature-Input: mac=("atproto-space-commit";sf);keyid="did:key:zDna...";tag="atproto-space-commit"
+Signature: mac=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:
+Vary: Accept-Signature
+				</pre>
+			</figure>
+		</section>
+	</section>
+	<section>
+		<h1>A Syncer's Responsibilities</h1>
+		<p>
+			Pulling the data is only part of the job.
+			A <strong>syncer</strong> also has responsibilities:
+		</p>
+		<dl>
+			<dt>deleting data when a space is deleted</dt>
+			<dd>
+				<p>
+					When a <strong>space</strong> is deleted, the <strong>space host</strong> notifies every registered <strong>syncer</strong>.
+					The <strong>syncer</strong> then calls <code>authorizeSpaceSync</code> again.
+					If it gets back a <code>SpaceDeleted</code> error, the <strong>syncer</strong> should delete <em>every</em> copy of the <strong>space</strong>'s data it has — including anything it computed from it.
+				</p>
+			</dd>
+
+			<dt>deciding which of its users can see what</dt>
+			<dd>
+				<p>
+					A <strong>space credential</strong> lets an application <em>sync</em> a <strong>space</strong>.
+					It does not tell the application which of <em>its</em> users should be shown that <strong>space</strong>.
+					The application has to figure that out (for example, from a published member list), and enforce it.
+				</p>
+			</dd>
+
+			<dt>respecting account status</dt>
+			<dd>
+				<p>
+					Data from deactivated or deleted accounts should not be shown.
+					The <strong>space</strong> sync does not tell a <strong>syncer</strong> about account status changes.
+					So, even a <strong>syncer</strong> that only syncs <strong>spaces</strong> still needs to subscribe to a firehose (<code>com.atproto.sync.subscribeRepos</code>), to get <code>#account</code> and <code>#identity</code> events.
+				</p>
+			</dd>
+		</dl>
+	</section>
+	<section>
+		<h1>XRPC API End-Points</h1>
+		<p>
+			Here are the <strong>XRPC</strong> API end-points that matter to a <strong>syncer</strong>.
+			All of them are in the <code>com.atproto.space</code> namespace.
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Who Implements It</th>
+						<th>What the Syncer Uses It For</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>authorizeSpaceSync</code></td>
+						<td>space host</td>
+						<td>get (and renew) a <strong>space credential</strong>; register for notifications</td>
+					</tr>
+					<tr>
+						<td><code>listWriters</code></td>
+						<td>space host</td>
+						<td>find out whose <strong>space repos</strong> are in the <strong>space</strong></td>
+					</tr>
+					<tr>
+						<td><code>getDelegationToken</code></td>
+						<td>user's <abbr title="Personal Data Server">PDS</abbr></td>
+						<td>get proof that a user authorized the application</td>
+					</tr>
+					<tr>
+						<td><code>listRepoOps</code></td>
+						<td>repo host</td>
+						<td>get the changes to a <strong>space repo</strong> since a revision</td>
+					</tr>
+					<tr>
+						<td><code>getRepo</code></td>
+						<td>repo host</td>
+						<td>download a whole <strong>space repo</strong></td>
+					</tr>
+					<tr>
+						<td><code>getLatestCommit</code></td>
+						<td>repo host</td>
+						<td>get a <strong>space repo</strong>'s current <strong>commit</strong></td>
+					</tr>
+					<tr>
+						<td><code>listRecords</code></td>
+						<td>repo host</td>
+						<td>list the records in a <strong>space repo</strong></td>
+					</tr>
+					<tr>
+						<td><code>getRecord</code></td>
+						<td>repo host</td>
+						<td>get a single record</td>
+					</tr>
+					<tr>
+						<td><code>listBlobs</code></td>
+						<td>repo host</td>
+						<td>list the <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> in a <strong>space repo</strong></td>
+					</tr>
+					<tr>
+						<td><code>getBlob</code></td>
+						<td>repo host</td>
+						<td>download a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong></td>
+					</tr>
+					<tr>
+						<td><code>confirmRegistration</code></td>
+						<td><strong>syncer</strong></td>
+						<td>confirm a notification registration</td>
+					</tr>
+					<tr>
+						<td><code>notifySpaceUpdate</code></td>
+						<td><strong>syncer</strong></td>
+						<td>receive notifications that the <strong>space</strong> changed</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			A <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>syncer</strong>:
+		</p>
+		<ol>
+			<li>gets a short-lived <strong>space credential</strong> from the <strong>space host</strong> (and keeps renewing it),</li>
+			<li>gets the <strong>writer set</strong> from the <strong>space host</strong>,</li>
+			<li>pulls each <strong>space repo</strong> from its <strong>repo host</strong> — the whole thing at first, and then just the changes,</li>
+			<li>checks its copy against each <strong>commit</strong>'s digest, and checks each <strong><abbr title="Message Authentication Code">MAC</abbr></strong>,</li>
+			<li>receives notifications from the <strong>space host</strong>, and pulls again when something changes, and</li>
+			<li>deletes its copy if the <strong>space</strong> is deleted.</li>
+		</ol>
+		<p>
+			Again, this is all a <em>proposal</em>.
+			Details are likely to change.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
