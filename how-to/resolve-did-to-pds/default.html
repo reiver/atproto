@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>How-To Resolve an ATProto DID to a PDS: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="decentralized identifier" />
+<meta name="category" content="did" />
+<meta name="category" content="did document" />
+<meta name="category" content="did:plc" />
+<meta name="category" content="did:web" />
+<meta name="category" content="how-to" />
+<meta name="category" content="open social web" />
+<meta name="category" content="pds" />
+<meta name="category" content="personal data server" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">How-To</a></li>
+		<li><a href="./" aria-current="page">Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> (decentralized identifier) to a <abbr title="Personal Data Server">PDS</abbr> (personal data server)</h1>
+			<p>
+				<code>https://plc.directory/</code>
+				<code>/.well-known/did.json</code>
+				<code>#atproto_pds</code>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		This article goes over how-to <strong>resolve</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>decentralized identifier</strong> (<strong><abbr title="decentralized identifier">DID</abbr></strong>) to a <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) from a computer-programming point-of-view.
+	</p>
+	<p>
+		For example, resolving the <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+	</p>
+	<pre><code>
+did:plc:scewmn2pl3oz36mxme2b6czz
+	</code></pre>
+	<p>
+		To the <strong><abbr title="Personal Data Server">PDS</abbr></strong>:
+	</p>
+	<pre><code>
+https://blacksky.app
+	</code></pre>
+	<p>
+		A user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> is the server where that user's data lives — their posts, likes, follows, images, etc.
+		If you want to read a user's data <em>directly</em> (rather than through some other service), you need to know where their <strong><abbr title="Personal Data Server">PDS</abbr></strong> is.
+	</p>
+	<p>
+		A user can move from one <strong><abbr title="Personal Data Server">PDS</abbr></strong> to another.
+		But, (for better or worse) their <strong><abbr title="decentralized identifier">DID</abbr></strong> stays the same.
+		So, you should <em>not</em> assume a user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> never changes — you look it up, using the <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+	</p>
+	<p>
+		(If what you have is a <strong>handle</strong> — such as <code>reiver.blacksky.team</code> — rather than a <strong><abbr title="decentralized identifier">DID</abbr></strong>, then first see: <a href="../resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr> (decentralized identifier)</a>.)
+	</p>
+	<section>
+		<h1>Two Steps</h1>
+		<p>
+			Resolving a <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="Personal Data Server">PDS</abbr></strong> has 2 steps:
+		</p>
+		<ol>
+			<li>resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, and</li>
+			<li>find the <strong><abbr title="Personal Data Server">PDS</abbr></strong> inside of the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.</li>
+		</ol>
+		<figure>
+			<pre>
+┌─────┐  step 1  ┌──────────────┐  step 2  ┌─────┐
+│ DID │ ───────► │ DID document │ ───────► │ PDS │
+└─────┘          └──────────────┘          └─────┘
+			</pre>
+		</figure>
+		<p>
+			A <strong><abbr title="decentralized identifier">DID</abbr> document</strong> is a <abbr title="JavaScript Object Notation">JSON</abbr> document.
+			It contains information about the <strong><abbr title="decentralized identifier">DID</abbr></strong> — including the user's <strong>handle</strong>, the user's public-key, and the location of the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		</p>
+		<p>
+			Let's look at each of these steps in more detail.
+		</p>
+	</section>
+	<section>
+		<h1>Step 1: Resolve the DID to a DID Document</h1>
+		<p>
+			How you get the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> depends on the <strong><abbr title="decentralized identifier">DID</abbr> method</strong>.
+		</p>
+		<p>
+			The <strong><abbr title="decentralized identifier">DID</abbr> method</strong> is the part of the <strong><abbr title="decentralized identifier">DID</abbr></strong> between the first colon and the second colon:
+		</p>
+		<figure>
+			<pre>
+did:plc:scewmn2pl3oz36mxme2b6czz
+    └┬┘
+     │
+ DID method
+			</pre>
+		</figure>
+		<p>
+			At the time of writing, <strong><abbr title="AT-Protocol">ATProto</abbr></strong> supports 2 <strong><abbr title="decentralized identifier">DID</abbr> methods</strong>:
+		</p>
+		<ul>
+			<li><code>did:plc</code></li>
+			<li><code>did:web</code></li>
+		</ul>
+		<p>
+			Most <strong><abbr title="AT-Protocol">ATProto</abbr></strong> users have a <code>did:plc</code>.
+			But, your code needs to support <em>both</em>.
+		</p>
+		<p>
+			If you get a <strong><abbr title="decentralized identifier">DID</abbr></strong> with any other <strong><abbr title="decentralized identifier">DID</abbr> method</strong> — such as <code>did:key</code> — then resolution has <em>failed</em>.
+			(It is an “unsupported <abbr title="decentralized identifier">DID</abbr> method”.)
+		</p>
+		<section>
+			<h1>did:plc</h1>
+			<p>
+				To resolve a <code>did:plc</code> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, make an <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> <code>GET</code> request to the <strong><abbr title="Public Ledger of Credentials">PLC</abbr> directory</strong>, with the whole <strong><abbr title="decentralized identifier">DID</abbr></strong> as the path:
+			</p>
+			<pre><code>
+https://plc.directory/<var>DID</var>
+			</code></pre>
+			<p>
+				For example, for the <strong><abbr title="decentralized identifier">DID</abbr></strong> <code>did:plc:scewmn2pl3oz36mxme2b6czz</code>, the <abbr title="Uniform Resource Locator">URL</abbr> is:
+			</p>
+			<pre><code>
+https://plc.directory/did:plc:scewmn2pl3oz36mxme2b6czz
+			</code></pre>
+			<p>
+				You can try this yourself, from the command-line, with the <code>curl</code> program:
+			</p>
+			<figure>
+				<pre>
+$ curl https://plc.directory/did:plc:scewmn2pl3oz36mxme2b6czz
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1",
+    "https://w3id.org/security/suites/secp256k1-2019/v1"
+  ],
+  "id": "did:plc:scewmn2pl3oz36mxme2b6czz",
+  "alsoKnownAs": [
+    "at://reiver.blacksky.team"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:plc:scewmn2pl3oz36mxme2b6czz#atproto",
+      "type": "Multikey",
+      "controller": "did:plc:scewmn2pl3oz36mxme2b6czz",
+      "publicKeyMultibase": "zQ3shp9QXCfBdr4YsWAZ7nuKhjzdXw4L5eE973r4yNoNWUKgZ"
+    }
+  ],
+  "service": [
+    {
+      "id": "#atproto_pds",
+      "type": "AtprotoPersonalDataServer",
+      "serviceEndpoint": "https://blacksky.app"
+    }
+  ]
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been reformatted, to make it easier to read.)
+			</p>
+		</section>
+		<section>
+			<h1>did:web</h1>
+			<p>
+				A <code>did:web</code> is based on an Internet domain.
+				For example:
+			</p>
+			<pre><code>
+did:web:genco.me
+			</code></pre>
+			<p>
+				To resolve a <code>did:web</code> to a <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, take the Internet domain from the <strong><abbr title="decentralized identifier">DID</abbr></strong> (the part after <code>did:web:</code>), and make an <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> <code>GET</code> request to this <abbr title="Uniform Resource Locator">URL</abbr>:
+			</p>
+			<pre><code>
+https://<var>DOMAIN</var>/.well-known/did.json
+			</code></pre>
+			<p>
+				So, for example:
+			</p>
+			<figure>
+				<pre>
+did:web:genco.me  →  https://genco.me/.well-known/did.json
+				</pre>
+			</figure>
+			<p>
+				You can try this yourself, from the command-line, with the <code>curl</code> program:
+			</p>
+			<figure>
+				<pre>
+$ curl https://genco.me/.well-known/did.json
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1",
+    "https://w3id.org/security/suites/secp256k1-2019/v1"
+  ],
+  "id": "did:web:genco.me",
+  "alsoKnownAs": [
+    "at://goeo.lol"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:web:genco.me#atproto",
+      "type": "Multikey",
+      "controller": "did:web:genco.me",
+      "publicKeyMultibase": "zQ3shvr5biKhPLCqFNLAtDLDZvhA9zdseEjQbY5frf23DMUJL"
+    }
+  ],
+  "service": [
+    {
+      "id": "#atproto_pds",
+      "type": "AtprotoPersonalDataServer",
+      "serviceEndpoint": "https://goeo.lol"
+    }
+  ]
+}
+				</pre>
+			</figure>
+			<p>
+				A few rules:
+			</p>
+			<ul>
+				<li>
+					The general <code>did:web</code> specification allows <strong><abbr title="decentralized identifier">DID</abbr>s</strong> with paths in them — for example, <code>did:web:example.com:user:alice</code>.
+					<strong><abbr title="AT-Protocol">ATProto</abbr></strong> does <em>not</em> support these.
+					Only the Internet domain form (such as <code>did:web:genco.me</code>) is supported.
+				</li>
+				<li>
+					The general <code>did:web</code> specification also allows a port number, with the colon percent-encoded — for example, <code>did:web:localhost%3A2583</code>.
+					<strong><abbr title="AT-Protocol">ATProto</abbr></strong> only allows this for <code>localhost</code>, during development and testing.
+				</li>
+			</ul>
+		</section>
+		<section>
+			<h1>Check the ID</h1>
+			<p>
+				Whichever <strong><abbr title="decentralized identifier">DID</abbr> method</strong> was used, check that the <code>id</code> field of the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> is the same as the <strong><abbr title="decentralized identifier">DID</abbr></strong> you asked for.
+			</p>
+			<figure>
+				<pre>
+asked for:  did:plc:scewmn2pl3oz36mxme2b6czz
+                              ║
+                           (same?)
+                              ║
+"id":      "did:plc:scewmn2pl3oz36mxme2b6czz"
+				</pre>
+			</figure>
+			<p>
+				If they are not the same, then resolution has <em>failed</em>.
+			</p>
+			<p>
+				(Note that <strong><abbr title="decentralized identifier">DID</abbr>s</strong> are case-sensitive.
+				So, compare them exactly.
+				Do <em>not</em> convert them to lower-case, like you would with a <strong>handle</strong>.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Step 2: Find the PDS in the DID Document</h1>
+		<p>
+			Inside of the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> is a field named <code>service</code>.
+			It is a list (a <abbr title="JavaScript Object Notation">JSON</abbr> array).
+		</p>
+		<p>
+			Look through that list for the <em>first</em> entry where:
+		</p>
+		<ul>
+			<li>the <code>id</code> ends with <code>#atproto_pds</code>, and</li>
+			<li>the <code>type</code> is <code>AtprotoPersonalDataServer</code>.</li>
+		</ul>
+		<p>
+			The <code>serviceEndpoint</code> of that entry is the <abbr title="Uniform Resource Locator">URL</abbr> of the <strong><abbr title="Personal Data Server">PDS</abbr></strong>:
+		</p>
+		<figure>
+			<pre>
+"service": [
+  {
+    "id": "#atproto_pds",                   ← ends with "#atproto_pds"
+    "type": "AtprotoPersonalDataServer",    ← is "AtprotoPersonalDataServer"
+    "serviceEndpoint": "https://blacksky.app"    ← the PDS
+  }
+]
+			</pre>
+		</figure>
+		<p>
+			A few rules:
+		</p>
+		<ul>
+			<li>
+				Notice it says the <code>id</code> <em>ends with</em> <code>#atproto_pds</code>.
+				The <code>id</code> might be written in short form — <code>"#atproto_pds"</code>.
+				Or, it might be written in long form, with the <strong><abbr title="decentralized identifier">DID</abbr></strong> in front of it — <code>"did:web:example.com#atproto_pds"</code>.
+				Your code needs to handle both.
+			</li>
+			<li>
+				If there is more than one matching entry, use the first one, and ignore the others.
+			</li>
+			<li>
+				The <code>serviceEndpoint</code> should be just a scheme, a host, and (optionally) a port — such as <code>https://blacksky.app</code>.
+				No path.
+			</li>
+			<li>
+				If there is no matching entry, then the account has no <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+				The specification says such an account “is likely broken”.
+			</li>
+		</ul>
+		<p>
+			(A <code>did:plc</code> and a <code>did:web</code> both have the same kind of <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+			So, this step is the same for both.)
+		</p>
+	</section>
+	<section>
+		<h1>Using the PDS</h1>
+		<p>
+			Once you have the <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s <abbr title="Uniform Resource Locator">URL</abbr>, you can call <strong>XRPC</strong> API end-points on it, by adding <code>/xrpc/</code> and the name of the end-point.
+		</p>
+		<p>
+			For example, the <code>com.atproto.repo.describeRepo</code> end-point tells you about the user's <strong>repository</strong>:
+		</p>
+		<figure>
+			<pre>
+$ curl 'https://blacksky.app/xrpc/com.atproto.repo.describeRepo?repo=did:plc:scewmn2pl3oz36mxme2b6czz'
+{"handle":"reiver.blacksky.team","did":"did:plc:scewmn2pl3oz36mxme2b6czz", ...
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed, to make it easier to read.)
+		</p>
+		<p>
+			For an example of a larger task that uses the <strong><abbr title="Personal Data Server">PDS</abbr></strong>, see: <a href="../../pds/backup/">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.
+		</p>
+		<p>
+			(Note that the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> saying where the <strong><abbr title="Personal Data Server">PDS</abbr></strong> is does <em>not</em> mean that the <strong><abbr title="Personal Data Server">PDS</abbr></strong> is currently working.
+			Servers go down.
+			Your code should handle that.)
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is an example of resolving a <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="Personal Data Server">PDS</abbr></strong> in the Go programming-language.
+			It supports both <code>did:plc</code> and <code>did:web</code>.
+			(To keep it short, it does <em>not</em> handle a <code>did:web</code> with a percent-encoded port number.)
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+)
+
+// didDocument is the part of a DID document that we need.
+type didDocument struct {
+	ID      string `json:"id"`
+	Service []struct {
+		ID              string `json:"id"`
+		Type            string `json:"type"`
+		ServiceEndpoint string `json:"serviceEndpoint"`
+	} `json:"service"`
+}
+
+// didDocumentURL returns the URL of the DID document for a DID.
+func didDocumentURL(did string) (string, error) {
+	switch {
+	case strings.HasPrefix(did, "did:plc:"):
+		return "https://plc.directory/" + did, nil
+	case strings.HasPrefix(did, "did:web:"):
+		host := strings.TrimPrefix(did, "did:web:")
+		if strings.Contains(host, ":") {
+			return "", errors.New("path-based did:web is not supported")
+		}
+		return "https://" + host + "/.well-known/did.json", nil
+	default:
+		return "", errors.New("unsupported DID method")
+	}
+}
+
+// resolveDID resolves a DID to its DID document.
+func resolveDID(ctx context.Context, did string) (didDocument, error) {
+	var document didDocument
+
+	url, err := didDocumentURL(did)
+	if nil != err {
+		return document, err
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if nil != err {
+		return document, err
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if nil != err {
+		return document, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode &lt; 200 || 299 &lt; response.StatusCode {
+		return document, fmt.Errorf("HTTP status %d", response.StatusCode)
+	}
+
+	err = json.NewDecoder(io.LimitReader(response.Body, 1024*1024)).Decode(&amp;document)
+	if nil != err {
+		return document, err
+	}
+
+	if did != document.ID {
+		return document, errors.New("DID document is for a different DID")
+	}
+	return document, nil
+}
+
+// resolvePDS resolves a DID to the URL of its PDS.
+func resolvePDS(ctx context.Context, did string) (string, error) {
+	document, err := resolveDID(ctx, did)
+	if nil != err {
+		return "", err
+	}
+
+	for _, service := range document.Service {
+		if strings.HasSuffix(service.ID, "#atproto_pds") &amp;&amp; "AtprotoPersonalDataServer" == service.Type {
+			return service.ServiceEndpoint, nil
+		}
+	}
+	return "", errors.New("no PDS found")
+}
+
+func main() {
+	for _, did := range os.Args[1:] {
+		pds, err := resolvePDS(context.Background(), did)
+		if nil != err {
+			fmt.Printf("%s → ERROR: %s\n", did, err)
+			continue
+		}
+		fmt.Printf("%s → %s\n", did, pds)
+	}
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it gives:
+		</p>
+		<figure>
+			<pre>
+$ go run . did:plc:scewmn2pl3oz36mxme2b6czz did:plc:44ybard66vv44zksje25o7dz did:web:genco.me did:key:z6Mk
+did:plc:scewmn2pl3oz36mxme2b6czz → https://blacksky.app
+did:plc:44ybard66vv44zksje25o7dz → https://pds.robocracy.org
+did:web:genco.me → https://goeo.lol
+did:key:z6Mk → ERROR: unsupported DID method
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			To <strong>resolve</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="decentralized identifier">DID</abbr></strong> to a <strong><abbr title="Personal Data Server">PDS</abbr></strong>:
+		</p>
+		<ol>
+			<li>Get the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>:
+				<ul>
+					<li>for a <code>did:plc</code>, <code>GET</code> <code>https://plc.directory/<var>DID</var></code>,</li>
+					<li>for a <code>did:web</code>, <code>GET</code> <code>https://<var>DOMAIN</var>/.well-known/did.json</code>,</li>
+					<li>for anything else, fail.</li>
+				</ul>
+			</li>
+			<li>Check that the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>'s <code>id</code> is the same as the <strong><abbr title="decentralized identifier">DID</abbr></strong>.</li>
+			<li>In the <code>service</code> list, find the first entry whose <code>id</code> ends with <code>#atproto_pds</code> and whose <code>type</code> is <code>AtprotoPersonalDataServer</code>.</li>
+			<li>That entry's <code>serviceEndpoint</code> is the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/did">AT Protocol Specification: DID</a></li>
+			<li><a href="https://web.plc.directory/">DID PLC Directory</a></li>
+			<li><a href="https://github.com/did-method-plc/did-method-plc">did-method-plc (GitHub repository)</a></li>
+			<li><a href="https://w3c-ccg.github.io/did-method-web/">did:web Method Specification</a></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
