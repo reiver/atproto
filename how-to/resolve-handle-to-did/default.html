@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>How-To Resolve an ATProto Handle to a DID: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="decentralized identifier" />
+<meta name="category" content="did" />
+<meta name="category" content="dns" />
+<meta name="category" content="handle" />
+<meta name="category" content="handle resolution" />
+<meta name="category" content="how-to" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+<meta name="category" content="well-known" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">How-To</a></li>
+		<li><a href="./" aria-current="page">Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr> (decentralized identifier)</h1>
+			<p>
+				<code>_atproto.</code>
+				<code>/.well-known/atproto-did</code>
+				<code>com.atproto.identity.resolveHandle</code>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		This article goes over how-to <strong>resolve</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>handle</strong> to a <strong>decentralized identifier</strong> (<strong><abbr title="decentralized identifier">DID</abbr></strong>) from a computer-programming point-of-view.
+	</p>
+	<p>
+		For example, resolving the <strong>handle</strong>:
+	</p>
+	<pre><code>
+bnewbold.net
+	</code></pre>
+	<p>
+		Which is also sometimes written in at-prefixed notation as:
+	</p>
+	<pre><code>
+@bnewbold.net
+	</code></pre>
+	<p>
+		To the <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+	</p>
+	<pre><code>
+did:plc:44ybard66vv44zksje25o7dz
+	</code></pre>
+	<p>
+		This is often the <em>first</em> thing a computer-program needs to do when working with an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> user.
+		Because, a person usually gives you a <strong>handle</strong>.
+		But, almost everything else in <strong><abbr title="AT-Protocol">ATProto</abbr></strong> is built on the <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+	</p>
+	<section>
+		<h1>Handles and DIDs</h1>
+		<p>
+			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> has two main ways of identifying users:
+		</p>
+		<dl>
+			<dt><abbr title="AT-Protocol">ATProto</abbr> handles</dt>
+			<dd>
+				<p>
+					For example:
+				</p>
+				<pre><code>
+reiver.blacksky.team
+				</code></pre>
+			</dd>
+
+			<dt><abbr title="decentralized identifier">DID</abbr>s</dt>
+			<dd>
+				<p>
+					For example:
+				</p>
+				<pre><code>
+did:plc:scewmn2pl3oz36mxme2b6czz
+				</code></pre>
+			</dd>
+		</dl>
+		<p>
+			<strong><abbr title="AT-Protocol">ATProto</abbr> handles</strong> are human-friendly ways of identifying <abbr title="AT-Protocol">ATProto</abbr> users.
+			<strong><abbr title="decentralized identifier">DID</abbr>s</strong> are machine-friendly ways of identifying <abbr title="AT-Protocol">ATProto</abbr> users.
+		</p>
+		<p>
+			A <strong>handle</strong> can change.
+			(A person might switch from <code>joeblow.bsky.social</code> to <code>joeblow.com</code>, for example.)
+			A <strong><abbr title="decentralized identifier">DID</abbr></strong> is meant to <em>not</em> change.
+			That is why software stores and refers to users by their <strong><abbr title="decentralized identifier">DID</abbr></strong>, and only shows the <strong>handle</strong> to humans.
+		</p>
+		<p>
+			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handles</strong> are just <strong>Internet domains</strong>.
+			And, that is the key to resolving them — since a <strong>handle</strong> is an Internet domain, it is the owner of that Internet domain who says what <strong><abbr title="decentralized identifier">DID</abbr></strong> the <strong>handle</strong> belongs to.
+		</p>
+	</section>
+	<section>
+		<h1>Step 0: Normalize the Handle</h1>
+		<p>
+			Before resolving a <strong>handle</strong>, clean it up.
+		</p>
+		<p>
+			<strong>Handles</strong> are often written with an “@” in front of them — <code>@bnewbold.net</code>.
+			That “@” is <em>not</em> part of the <strong>handle</strong>.
+			Remove it.
+		</p>
+		<p>
+			<strong>Handles</strong> are <em>not</em> case-sensitive.
+			So, convert the <strong>handle</strong> to lower-case.
+			For example:
+		</p>
+		<figure>
+			<pre>
+@BNewbold.net  →  bnewbold.net
+			</pre>
+		</figure>
+		<p>
+			(The specification also has syntax rules for <strong>handles</strong> — for example: only ASCII letters, digits, hyphens, and periods; at least 2 segments; and at most 253 characters.
+			If you are accepting <strong>handles</strong> from users, it is a good idea to check these too.
+			See the “Sources” section, at the end of this article.)
+		</p>
+	</section>
+	<section>
+		<h1>Two Methods</h1>
+		<p>
+			There are 2 ways to <strong>resolve</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+		</p>
+		<ol>
+			<li>a <strong><abbr title="Domain Name System">DNS</abbr></strong> <strong>TXT</strong> record, and</li>
+			<li>an <strong><abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr></strong> request to a <code>/.well-known/</code> <abbr title="Uniform Resource Locator">URL</abbr>.</li>
+		</ol>
+		<p>
+			Any particular <strong>handle</strong> might use either one.
+			So, your code needs to support <em>both</em>.
+		</p>
+		<p>
+			Let's look at each of these in more detail.
+		</p>
+	</section>
+	<section>
+		<h1>Method 1: DNS TXT Record</h1>
+		<p>
+			To resolve a <strong>handle</strong> using <strong><abbr title="Domain Name System">DNS</abbr></strong>, put <code>_atproto.</code> in front of the <strong>handle</strong>, and look up the <strong>TXT</strong> records for that name.
+		</p>
+		<p>
+			For example, for the <strong>handle</strong> <code>bnewbold.net</code>, look up the <strong>TXT</strong> records for:
+		</p>
+		<pre><code>
+_atproto.bnewbold.net
+		</code></pre>
+		<p>
+			You can try this yourself, from the command-line, with the <code>dig</code> program:
+		</p>
+		<figure>
+			<pre>
+$ dig +short TXT _atproto.bnewbold.net
+"did=did:plc:44ybard66vv44zksje25o7dz"
+			</pre>
+		</figure>
+		<p>
+			The value of the <strong>TXT</strong> record starts with <code>did=</code>.
+			Everything after the <code>did=</code> is the <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+		</p>
+		<figure>
+			<pre>
+did=did:plc:44ybard66vv44zksje25o7dz
+└┬─┘└──────────────┬───────────────┘
+ │                 │
+prefix            DID
+			</pre>
+		</figure>
+		<p>
+			A few rules:
+		</p>
+		<ul>
+			<li><strong>TXT</strong> records that do <em>not</em> start with <code>did=</code> should be ignored.</li>
+			<li>If there are 2 (or more) <code>did=</code> records with <em>different</em> <strong><abbr title="decentralized identifier">DID</abbr>s</strong>, then resolution has <em>failed</em>.</li>
+			<li>If there are no <code>did=</code> records, then this method has failed — and you should try the other method.</li>
+		</ul>
+		<p>
+			The specification says this <strong><abbr title="Domain Name System">DNS</abbr></strong> method is the one that is recommended for individuals who use their own Internet domain as their <strong>handle</strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Method 2: HTTPS Well-Known URL</h1>
+		<p>
+			To resolve a <strong>handle</strong> using <strong><abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr></strong>, make an <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> <code>GET</code> request to this <abbr title="Uniform Resource Locator">URL</abbr>:
+		</p>
+		<pre><code>
+https://<var>HANDLE</var>/.well-known/atproto-did
+		</code></pre>
+		<p>
+			Where <code><var>HANDLE</var></code> is replaced with the <strong>handle</strong>.
+		</p>
+		<p>
+			For example, for the <strong>handle</strong> <code>rude1.blacksky.team</code>, the <abbr title="Uniform Resource Locator">URL</abbr> is:
+		</p>
+		<pre><code>
+https://rude1.blacksky.team/.well-known/atproto-did
+		</code></pre>
+		<p>
+			You can try this yourself, from the command-line, with the <code>curl</code> program:
+		</p>
+		<figure>
+			<pre>
+$ curl https://rude1.blacksky.team/.well-known/atproto-did
+did:plc:w4xbfzo7kqfes5zb7r6qv3rw
+			</pre>
+		</figure>
+		<p>
+			The body of the <abbr title="HyperText Transfer Protocol">HTTP</abbr> response is just the <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			There is no <code>did=</code> prefix here.
+			There is no <abbr title="JavaScript Object Notation">JSON</abbr>.
+			Just the <strong><abbr title="decentralized identifier">DID</abbr></strong>, as plain text.
+		</p>
+		<p>
+			A few rules:
+		</p>
+		<ul>
+			<li>It must be <strong><abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr></strong> (on the default port, 443).  Plain <abbr title="HyperText Transfer Protocol">HTTP</abbr> is only for local development and testing.</li>
+			<li>The <abbr title="HyperText Transfer Protocol">HTTP</abbr> status code must be a success (<code>2xx</code>).</li>
+			<li>The <code>Content-Type</code> should be <code>text/plain</code>.  But, you do not need to strictly check it.</li>
+			<li>Strip any whitespace from the beginning and end of the body before using it.  (For example, a trailing new-line.)</li>
+			<li>Follow <abbr title="HyperText Transfer Protocol">HTTP</abbr> redirects (such as <code>301</code> and <code>302</code>) — up to a reasonable number of them.</li>
+		</ul>
+		<p>
+			The specification says this <strong><abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr></strong> method is meant for large services that give out many <strong>handles</strong> — such as <code>*.bsky.social</code> and <code>*.blacksky.team</code>.
+			(It is easier for them to answer an <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> request than to create a <strong><abbr title="Domain Name System">DNS</abbr></strong> record for every user.)
+		</p>
+	</section>
+	<section>
+		<h1>Using Both Methods Together</h1>
+		<p>
+			Since you do not know ahead of time which method a <strong>handle</strong> uses, you try both.
+		</p>
+		<p>
+			The simple way to do this is: try <strong><abbr title="Domain Name System">DNS</abbr></strong> first; and if that fails, try <strong><abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr></strong>.
+		</p>
+		<figure>
+			<pre>
+                 handle
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │  DNS TXT lookup of  │
+        │  _atproto.HANDLE    │
+        └──────────┬──────────┘
+                   │
+           found a DID?
+             │         │
+            yes        no
+             │         │
+             │         ▼
+             │  ┌──────────────────────────────────┐
+             │  │  HTTPS GET of                    │
+             │  │  https://HANDLE/.well-known/     │
+             │  │                    atproto-did   │
+             │  └──────────────┬───────────────────┘
+             │                 │
+             │         found a DID?
+             │           │         │
+             │          yes        no
+             │           │         │
+             ▼           ▼         ▼
+                 DID             FAILED
+			</pre>
+		</figure>
+		<p>
+			The specification also says it is OK to try both at the same time (in parallel), and use whichever succeeds first.
+		</p>
+		<p>
+			What if both methods succeed, but give <em>different</em> <strong><abbr title="decentralized identifier">DID</abbr>s</strong>?
+			Then the specification says to prefer the <strong><abbr title="Domain Name System">DNS</abbr></strong> result.
+			(Or, to treat the result as ambiguous, and try again later.)
+		</p>
+	</section>
+	<section>
+		<h1>Verify: Check the DID Points Back to the Handle</h1>
+		<p>
+			You now have a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			But, you are not done yet!
+		</p>
+		<p>
+			Anyone who owns an Internet domain can create a <code>_atproto.</code> <strong>TXT</strong> record (or a <code>/.well-known/atproto-did</code> file) that points to <em>any</em> <strong><abbr title="decentralized identifier">DID</abbr></strong> — including <em>your</em> <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			So, a <strong>handle</strong> pointing to a <strong><abbr title="decentralized identifier">DID</abbr></strong> is only <em>half</em> of the story.
+		</p>
+		<p>
+			The other half is that the <strong><abbr title="decentralized identifier">DID</abbr></strong> must point back to the <strong>handle</strong>.
+		</p>
+		<figure>
+			<pre>
+           ┌──────────── handle → DID ────────────┐
+           │                                      ▼
+┌──────────────────────┐            ┌──────────────────────────────────┐
+│ reiver.blacksky.team │            │ did:plc:scewmn2pl3oz36mxme2b6czz │
+└──────────────────────┘            └──────────────────────────────────┘
+           ▲                                      │
+           └──────────── DID → handle ────────────┘
+			</pre>
+		</figure>
+		<p>
+			To do this, you <strong>resolve</strong> the <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+			(For a <code>did:plc</code>, you can get the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> from <code>https://plc.directory/<var>DID</var></code>.)
+		</p>
+		<p>
+			Inside of the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> is a field named <code>alsoKnownAs</code>.
+			It is a list of <abbr title="Uniform Resource Identifier">URI</abbr>s.
+			The <strong>handle</strong> is in there, with <code>at://</code> in front of it:
+		</p>
+		<figure>
+			<pre>
+$ curl https://plc.directory/did:plc:scewmn2pl3oz36mxme2b6czz
+{
+  "id": "did:plc:scewmn2pl3oz36mxme2b6czz",
+  "alsoKnownAs": [
+    "at://reiver.blacksky.team"
+  ],
+  ...
+}
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed and reformatted, to make it easier to read.)
+		</p>
+		<p>
+			The first <code>at://</code> entry in <code>alsoKnownAs</code> is the <strong>handle</strong> that the <strong><abbr title="decentralized identifier">DID</abbr></strong> claims.
+			If it matches the <strong>handle</strong> you started with, then the <strong>handle</strong> is <em>verified</em>.
+			If it does not match, then the <strong>handle</strong> is <em>not</em> valid for that <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+		</p>
+		<p>
+			Here is a real example of where this matters.
+			At the time of writing, the old <strong>handle</strong> <code>reiver.bsky.social</code> still resolves to <code>did:plc:scewmn2pl3oz36mxme2b6czz</code>:
+		</p>
+		<figure>
+			<pre>
+$ curl https://reiver.bsky.social/.well-known/atproto-did
+did:plc:scewmn2pl3oz36mxme2b6czz
+			</pre>
+		</figure>
+		<p>
+			But, that <strong><abbr title="decentralized identifier">DID</abbr></strong>'s <code>alsoKnownAs</code> says <code>at://reiver.blacksky.team</code> — <em>not</em> <code>at://reiver.bsky.social</code>.
+			So, <code>reiver.bsky.social</code> fails verification, and should <em>not</em> be treated as that user's <strong>handle</strong>.
+		</p>
+		<p>
+			(When an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> service has a <strong><abbr title="decentralized identifier">DID</abbr></strong> without a verified <strong>handle</strong>, it shows the special value <code>handle.invalid</code> in place of the <strong>handle</strong>.)
+		</p>
+		<p>
+			How-to resolve a <strong><abbr title="decentralized identifier">DID</abbr></strong> is covered in more detail in: <a href="../resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> (decentralized identifier) to a <abbr title="Personal Data Server">PDS</abbr> (personal data server)</a>.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is an example of resolving a <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong> in the Go programming-language.
+			It tries <strong><abbr title="Domain Name System">DNS</abbr></strong> first, and then <strong><abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr></strong>.
+			(To keep it short, it does <em>not</em> do the verification step.)
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"strings"
+)
+
+// resolveHandleDNS resolves an ATProto handle to a DID using a DNS TXT record.
+func resolveHandleDNS(ctx context.Context, handle string) (string, error) {
+	records, err := net.DefaultResolver.LookupTXT(ctx, "_atproto."+handle)
+	if err != nil {
+		return "", err
+	}
+
+	var did string
+	for _, record := range records {
+		if !strings.HasPrefix(record, "did=") {
+			continue
+		}
+		value := strings.TrimPrefix(record, "did=")
+		if "" != did &amp;&amp; did != value {
+			return "", errors.New("more than one DID found")
+		}
+		did = value
+	}
+	if "" == did {
+		return "", errors.New("no DID found")
+	}
+	return did, nil
+}
+
+// resolveHandleHTTPS resolves an ATProto handle to a DID using the /.well-known/atproto-did URL.
+func resolveHandleHTTPS(ctx context.Context, handle string) (string, error) {
+	url := "https://" + handle + "/.well-known/atproto-did"
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode &lt; 200 || 299 &lt; response.StatusCode {
+		return "", fmt.Errorf("HTTP status %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, 1024))
+	if err != nil {
+		return "", err
+	}
+
+	did := strings.TrimSpace(string(body))
+	if !strings.HasPrefix(did, "did:") {
+		return "", errors.New("not a DID")
+	}
+	return did, nil
+}
+
+// resolveHandle resolves an ATProto handle to a DID.
+// It tries DNS first, and then HTTPS.
+func resolveHandle(ctx context.Context, handle string) (string, error) {
+	handle = strings.ToLower(strings.TrimPrefix(handle, "@"))
+
+	did, err := resolveHandleDNS(ctx, handle)
+	if nil == err {
+		return did, nil
+	}
+
+	return resolveHandleHTTPS(ctx, handle)
+}
+
+func main() {
+	for _, handle := range os.Args[1:] {
+		did, err := resolveHandle(context.Background(), handle)
+		if nil != err {
+			fmt.Printf("%s → ERROR: %s\n", handle, err)
+			continue
+		}
+		fmt.Printf("%s → %s\n", handle, did)
+	}
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it gives:
+		</p>
+		<figure>
+			<pre>
+$ go run . @BNewbold.net reiver.blacksky.team rude1.blacksky.team
+@BNewbold.net → did:plc:44ybard66vv44zksje25o7dz
+reiver.blacksky.team → did:plc:scewmn2pl3oz36mxme2b6czz
+rude1.blacksky.team → did:plc:w4xbfzo7kqfes5zb7r6qv3rw
+			</pre>
+		</figure>
+		<p>
+			(Go's <code>http.DefaultClient</code> follows redirects by itself — up to 10 of them.)
+		</p>
+	</section>
+	<section>
+		<h1>Shortcut: Ask a Server To Do It</h1>
+		<p>
+			If you do not want to do the resolving yourself, you can ask an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> server to do it for you.
+			There is an <strong>XRPC</strong> API end-point for this:
+		</p>
+		<dl>
+			<dt><code>com.atproto.identity.resolveHandle</code></dt>
+			<dd>
+				<p>
+					resolves an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			For example:
+		</p>
+		<figure>
+			<pre>
+$ curl 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=reiver.blacksky.team'
+{"did":"did:plc:scewmn2pl3oz36mxme2b6czz"}
+			</pre>
+		</figure>
+		<p>
+			Most <strong>Personal Data Servers</strong> (<strong><abbr title="Personal Data Server">PDS</abbr>es</strong>) also support this end-point.
+		</p>
+		<p>
+			Two things to keep in mind:
+		</p>
+		<ul>
+			<li>You are trusting that server to give you the right answer.</li>
+			<li>The <strong>lexicon</strong> for this end-point says it “does not necessarily bi-directionally verify against the the DID document”.  So, you may still need to do the verification step yourself.</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Caching</h1>
+		<p>
+			Resolving a <strong>handle</strong> involves the network — and thus is relatively slow.
+			So, the specification says it is a best-practice to <strong>cache</strong> the result, and re-resolve it every so often.
+		</p>
+		<p>
+			(The specification notes that <strong><abbr title="Domain Name System">DNS</abbr></strong> <abbr title="time to live">TTL</abbr> values are probably too short to use as the cache lifetime for this.)
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			To <strong>resolve</strong> an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>handle</strong> to a <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+		</p>
+		<ol>
+			<li>Normalize the <strong>handle</strong> — remove any “@” prefix, and convert it to lower-case.</li>
+			<li>Look up the <strong><abbr title="Domain Name System">DNS</abbr></strong> <strong>TXT</strong> records for <code>_atproto.<var>HANDLE</var></code>, and use the value after <code>did=</code>.</li>
+			<li>If that fails, <code>GET</code> <code>https://<var>HANDLE</var>/.well-known/atproto-did</code>, and use the (whitespace trimmed) body.</li>
+			<li>Resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, and check that the first <code>at://</code> entry in <code>alsoKnownAs</code> is the same <strong>handle</strong>.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/handle">AT Protocol Specification: Handle</a></li>
+			<li><a href="https://atproto.com/specs/did">AT Protocol Specification: DID</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/identity/resolveHandle.json"><code>com.atproto.identity.resolveHandle</code> lexicon</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto-interop-tests">AT Protocol interoperability tests</a> (test-vectors for handle syntax, and more)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
