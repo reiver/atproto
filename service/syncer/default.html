@@ -51,6 +51,43 @@
 		</p>
 	</blockquote>
 	<p>
+		Notice the word “application”.
+		<mark>A <strong>syncer</strong> is <em>not</em> a separate service that applications use — the way an application might use a <strong>relay</strong>.
+		A <strong>syncer</strong> <em>is</em> the application.</mark>
+		(Or, more precisely, the back-end part of the application.)
+	</p>
+	<p>
+		Compare how an application gets <em>public</em> data with how it gets data from a <strong>space</strong>:
+	</p>
+	<figure>
+		<pre>
+public data:
+
+┌─────┐       ┌───────┐       ┌─────────────────────────┐       ┌───────┐
+│ PDS │ ────► │ relay │ ────► │ application's back-end  │ ────► │ users │
+└─────┘       └───────┘       └─────────────────────────┘       └───────┘
+
+
+space data:
+
+┌─────┐                       ┌─────────────────────────┐       ┌───────┐
+│ PDS │ ────────────────────► │ application's back-end  │ ────► │ users │
+└─────┘                       │ (this is the syncer)    │       └───────┘
+                              └─────────────────────────┘
+		</pre>
+	</figure>
+	<p>
+		With <strong>spaces</strong>, there is no <strong>relay</strong> (or any other service) in the middle.
+		The application pulls the data directly from each user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and keeps its own copy.
+		Pulling the data, and keeping that copy up-to-date, is what makes the application a <strong>syncer</strong>.
+	</p>
+	<p>
+		So, for example, if you are building a private-forum application, then <em>your application's back-end</em> is the <strong>syncer</strong>.
+		It pulls the forum's data, stores it in its own database, and serves it to your users however you choose.
+		The proposal does <em>not</em> define any <strong>XRPC</strong> API end-points for reading data <em>from</em> a <strong>syncer</strong>.
+		(The only end-points a <strong>syncer</strong> implements are for receiving notifications — see step 4, below.)
+	</p>
+	<p>
 		To understand what a <strong>syncer</strong> is, you first need to understand what a <strong>space</strong> is.
 		And, why <strong>spaces</strong> need something like a <strong>syncer</strong> at all.
 	</p>
