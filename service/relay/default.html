@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Relay: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="event stream" />
+<meta name="category" content="firehose" />
+<meta name="category" content="open social web" />
+<meta name="category" content="relay" />
+<meta name="category" content="social web" />
+<meta name="category" content="subscribeRepos" />
+<meta name="category" content="sync" />
+<meta name="category" content="websocket" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Relay</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Relay</h1>
+			<p>
+				the service that combines many firehoses into one
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>relay</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>service</strong> that listens to the changes happening on many <strong>Personal Data Servers</strong> (<strong><abbr title="Personal Data Server">PDS</abbr>es</strong>), and combines them into a single stream of changes — called a <strong>firehose</strong>.
+	</p>
+	<p>
+		The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			<strong>Relays</strong> are network services which subscribe to multiple upstream firehoses (eg, multiple PDS hosts) and aggregate them in to a single combined event stream. A relay which attempts to aggregate accounts from all PDS instances in the network outputs a "full-network" firehose.
+		</p>
+	</blockquote>
+	<p>
+		<mark>A <strong>relay</strong> is <em>not</em> where users' data lives.
+		The data lives on each user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		A <strong>relay</strong> just passes changes along — from many <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>, to whoever is listening.</mark>
+	</p>
+	<figure>
+		<pre>
+┌───────┐
+│ PDS 1 │ ───┐
+└───────┘    │
+┌───────┐    │    ┌───────┐          ┌───────────────┐
+│ PDS 2 │ ───┼──► │ relay │ ───┬───► │ application 1 │
+└───────┘    │    └───────┘    │     └───────────────┘
+┌───────┐    │                 │     ┌───────────────┐
+│ PDS 3 │ ───┘                 ├───► │ application 2 │
+└───────┘                      │     └───────────────┘
+                               │     ┌───────────────┐
+                               └───► │ application 3 │
+                                     └───────────────┘
+		</pre>
+	</figure>
+	<p>
+		And, a <strong>relay</strong> is a separate service that applications <em>use</em>.
+		(Compare this with a <strong><a href="../syncer/">syncer</a></strong>, which <em>is</em> the application.)
+	</p>
+	<section>
+		<h1>Why Relays Exist</h1>
+		<p>
+			Every <strong><abbr title="Personal Data Server">PDS</abbr></strong> has its own <strong>firehose</strong> — a stream of every change to every account it hosts.
+		</p>
+		<p>
+			An application that wants to see what is happening on the whole network (for example, an <strong>AppView</strong> that shows posts from everyone) could connect to every <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s <strong>firehose</strong> itself.
+			But, there are thousands of <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>.
+			So, that would mean thousands of connections — for <em>every</em> application.
+		</p>
+		<p>
+			A <strong>relay</strong> does that work once, and shares the result.
+			Each application then only needs <em>one</em> connection — to a <strong>relay</strong>.
+		</p>
+		<figure>
+			<pre>
+without a relay — every application connects to every PDS:
+
+        3 PDSes  ×   3 applications  =       9 connections
+    1,000 PDSes  × 100 applications  = 100,000 connections
+
+with a relay — every PDS and every application connects only to the relay:
+
+        3 PDSes  +   3 applications  =       6 connections
+    1,000 PDSes  + 100 applications  =   1,100 connections
+			</pre>
+		</figure>
+		<p>
+			Note that a <strong>relay</strong> is an <em>optimization</em>.
+			It is not required.
+			The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> glossary says:
+		</p>
+		<blockquote>
+			<p>
+				Relays are an optimization and are not strictly necessary. An AppView could communicate directly with PDSes (in a smaller-scale application). The Relay serves to reduce the number of connections that are needed in the network.
+			</p>
+		</blockquote>
+	</section>
+	<section>
+		<h1>Relays You Can Connect To</h1>
+		<p>
+			Anyone can run a <strong>relay</strong>.
+			And, there is more than one.
+			Here are some that were working at the time of writing:
+		</p>
+		<dl>
+			<dt><code>bsky.network</code></dt>
+			<dd>
+				<p>
+					Bluesky's <strong>relay</strong>.
+					(Bluesky also runs <code>relay1.us-east.bsky.network</code> and <code>relay1.us-west.bsky.network</code>.)
+				</p>
+			</dd>
+
+			<dt><code>relay.fire.hose.cam</code></dt>
+			<dd>
+				<p>
+					a <strong>relay</strong> whose home page says it is running the <code>relay</code> codebase from Bluesky's <code>indigo</code> repository.
+				</p>
+			</dd>
+
+			<dt><code>atproto.africa</code></dt>
+			<dd>
+				<p>
+					the Blacksky team's <strong>relay</strong>.
+					(Its home page says “RSKY RELAY”.)
+					(At the time of writing, it answered <code>listHosts</code> and <code>getHostStatus</code>, but not <code>listRepos</code> or <code>getRepoStatus</code>.)
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Different <strong>relays</strong> may crawl different sets of <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>.
+			So, they do not necessarily all have the same data.
+		</p>
+	</section>
+	<section>
+		<h1>The Firehose</h1>
+		<p>
+			The <strong>firehose</strong> is the <code>com.atproto.sync.subscribeRepos</code> <strong>XRPC</strong> API end-point.
+			Both a <strong><abbr title="Personal Data Server">PDS</abbr></strong> and a <strong>relay</strong> implement it, in the same way.
+			(A <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s <strong>firehose</strong> has the changes for its own accounts.
+			A <strong>relay</strong>'s <strong>firehose</strong> has the changes for all the accounts on all the <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> it follows.)
+		</p>
+		<p>
+			It is a <strong>WebSocket</strong>, rather than an ordinary <abbr title="HyperText Transfer Protocol">HTTP</abbr> request.
+			For example:
+		</p>
+		<pre><code>
+wss://bsky.network/xrpc/com.atproto.sync.subscribeRepos
+		</code></pre>
+		<p>
+			It is public.
+			It does not require logging in.
+		</p>
+		<section>
+			<h1>Frames</h1>
+			<p>
+				Each WebSocket frame contains <em>2</em> <strong><abbr title="Concise Binary Object Representation">CBOR</abbr></strong> objects, one right after the other:
+			</p>
+			<figure>
+				<pre>
+┌──────────────────────┬────────────────────────────────────────┐
+│ header (CBOR)        │ message (CBOR)                         │
+│ { "op": 1,           │ { "seq": 35746373385,                  │
+│   "t": "#commit" }   │   "repo": "did:plc:…", … }             │
+└──────────────────────┴────────────────────────────────────────┘
+				</pre>
+			</figure>
+			<dl>
+				<dt>header</dt>
+				<dd>
+					<p>
+						<code>op</code> is <code>1</code> for a normal message, or <code>-1</code> for an error.
+						<code>t</code> is the type of the message — such as <code>#commit</code>.
+					</p>
+				</dd>
+
+				<dt>message</dt>
+				<dd>
+					<p>
+						the event itself.
+						Its shape depends on <code>t</code>.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				A single frame can be at most 5 megabytes.
+			</p>
+		</section>
+		<section>
+			<h1>Event Types</h1>
+			<p>
+				There are 4 main types of event:
+			</p>
+			<dl>
+				<dt><code>#commit</code></dt>
+				<dd>
+					<p>
+						a change to an account's <strong>repository</strong> — records created, updated, or deleted.
+						It includes the list of operations (<code>ops</code>), the new signed commit, and the changed data blocks (as a <abbr title="Content Addressable Archive">CAR</abbr> slice).
+						So, an application does <em>not</em> need to go and fetch the change from the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+					</p>
+				</dd>
+
+				<dt><code>#sync</code></dt>
+				<dd>
+					<p>
+						the account's <strong>repository</strong> has been reset to a new state — so any copy of it should be re-synced.
+					</p>
+				</dd>
+
+				<dt><code>#identity</code></dt>
+				<dd>
+					<p>
+						the account's <strong><abbr title="decentralized identifier">DID</abbr> document</strong> or <strong>handle</strong> <em>may</em> have changed.
+					</p>
+				</dd>
+
+				<dt><code>#account</code></dt>
+				<dd>
+					<p>
+						the account's hosting status has changed — <code>active</code> is true or false, and <code>status</code> may be <code>takendown</code>, <code>suspended</code>, <code>deleted</code>, or <code>deactivated</code>.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				(There is also <code>#info</code>, for informational messages — such as telling a client that its cursor is too old.)
+			</p>
+		</section>
+		<section>
+			<h1>Sequence Numbers and Cursors</h1>
+			<p>
+				Every event has a <code>seq</code> — a sequence number, that goes up with each event.
+			</p>
+			<p>
+				If a client disconnects, it can reconnect with a <code>cursor</code> query parameter, set to the last <code>seq</code> it saw, to pick up where it left off:
+			</p>
+			<pre><code>
+wss://bsky.network/xrpc/com.atproto.sync.subscribeRepos?cursor=35746373394
+			</code></pre>
+			<ul>
+				<li>with no <code>cursor</code>, the stream starts from <em>now</em>,</li>
+				<li>with a <code>cursor</code> inside the server's “roll-back window”, the server sends the events since then, and then continues live,</li>
+				<li>with a <code>cursor</code> older than the roll-back window, the server says so (with an <code>#info</code> message), and starts from the oldest event it still has,</li>
+				<li>with a <code>cursor</code> in the future, the server sends an error (<code>FutureCursor</code>), and closes the connection.</li>
+			</ul>
+			<p>
+				Note that <code>seq</code> numbers belong to a particular server.
+				A <code>seq</code> from one <strong>relay</strong> means nothing to a different <strong>relay</strong> (or to a <strong><abbr title="Personal Data Server">PDS</abbr></strong>).
+			</p>
+			<p>
+				The roll-back window is limited.
+				It is for catching up after a short disconnection — not for replaying the whole history of the network.
+			</p>
+			<p>
+				If a client cannot keep up with the stream, the server may send a <code>ConsumerTooSlow</code> error, and close the connection.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is an example of reading the <strong>firehose</strong> from a <strong>relay</strong>, in the Go programming-language.
+			It prints the first 10 events.
+			It uses <code>github.com/gorilla/websocket</code> for the WebSocket, and <code>github.com/fxamacker/cbor/v2</code> for <strong><abbr title="Concise Binary Object Representation">CBOR</abbr></strong>.
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+
+	"github.com/fxamacker/cbor/v2"
+	"github.com/gorilla/websocket"
+)
+
+// header is the first CBOR object in each WebSocket frame.
+type header struct {
+	Op   int    `cbor:"op"`
+	Type string `cbor:"t"`
+}
+
+// event is the part of the second CBOR object (the message) that we print.
+type event struct {
+	Seq  int64  `cbor:"seq"`
+	Repo string `cbor:"repo"` // #commit, #sync
+	DID  string `cbor:"did"`  // #identity, #account
+	Time string `cbor:"time"`
+	Ops  []struct {
+		Action string `cbor:"action"`
+		Path   string `cbor:"path"`
+	} `cbor:"ops"`
+}
+
+func main() {
+	const url = "wss://bsky.network/xrpc/com.atproto.sync.subscribeRepos"
+
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, "ERROR:", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	for i := 0; i &lt; 10; i++ {
+		_, frame, err := conn.ReadMessage()
+		if nil != err {
+			fmt.Fprintln(os.Stderr, "ERROR:", err)
+			os.Exit(1)
+		}
+
+		// Each frame is 2 CBOR objects, one after the other: a header, then the message.
+		decoder := cbor.NewDecoder(bytes.NewReader(frame))
+
+		var h header
+		err = decoder.Decode(&amp;h)
+		if nil != err {
+			fmt.Fprintln(os.Stderr, "ERROR:", err)
+			continue
+		}
+		if 1 != h.Op {
+			fmt.Println("error frame")
+			break
+		}
+
+		var e event
+		err = decoder.Decode(&amp;e)
+		if nil != err {
+			fmt.Fprintln(os.Stderr, "ERROR:", err)
+			continue
+		}
+
+		who := e.Repo
+		if "" == who {
+			who = e.DID
+		}
+		fmt.Printf("%d %-9s %s", e.Seq, h.Type, who)
+		for _, op := range e.Ops {
+			fmt.Printf(" %s:%s", op.Action, op.Path)
+		}
+		fmt.Println()
+	}
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it gave:
+		</p>
+		<figure>
+			<pre>
+$ go run .
+35746373385 #commit   did:plc:lsbwlyge4el26v2mmdiydg52 create:app.bsky.feed.post/3n2sdbzoyfc2m
+35746373386 #commit   did:plc:tzwy7uq6auldwol4fs6hdx4a create:app.bsky.feed.like/3n2sdc5exaf25
+35746373387 #commit   did:plc:63gdrjqyxkhryefl4nnrkuun create:app.bsky.feed.like/3n2sdc55bpx2y
+35746373388 #commit   did:plc:ncib3gxe4szwj2ckgytqdmpx create:app.bsky.feed.like/3n2sdc5as5m2l
+35746373389 #commit   did:plc:hadm5pca47tigeg64rp4eiq6 create:app.bsky.feed.like/3n2sdc5fku627
+35746373390 #commit   did:plc:hghygy3ewaffngg6gfqpdh2n create:app.bsky.feed.like/3n2sdc5g7222w
+35746373391 #commit   did:plc:7qxtoeg67fw7rufttmzbhq5h update:place.stream.broadcast.origin/did:plc:7qxtoeg67fw7rufttmzbhq5h::did:web:prod-sea0.stream.place
+35746373392 #commit   did:plc:yt5zyr2c77tphz6rufehcxid create:app.bsky.feed.like/3n2sdc5dxzu2x
+35746373393 #commit   did:plc:pjmndj26x3mzbjhxt43d3twc update:app.libresky.actor.presence/self
+35746373394 #commit   did:plc:77kodnt53z3itvjzvlpk6wvx create:app.bsky.feed.post/3n2sdbzzuzk2u
+			</pre>
+		</figure>
+		<p>
+			Notice that the <strong>firehose</strong> is not only Bluesky data.
+			It carries records of <em>every</em> type, from every application — such as <code>place.stream.broadcast.origin</code> and <code>app.libresky.actor.presence</code> above.
+		</p>
+		<p>
+			(To keep it short, this example does not verify anything.
+			A real application should — see “Trust”, below.)
+		</p>
+	</section>
+	<section>
+		<h1>Other XRPC API End-Points</h1>
+		<p>
+			Besides the <strong>firehose</strong>, a <strong>relay</strong> has a few more <strong>XRPC</strong> API end-points:
+		</p>
+		<dl>
+			<dt><code>com.atproto.sync.listHosts</code></dt>
+			<dd>
+				<p>
+					lists the upstream hosts (<strong><abbr title="Personal Data Server">PDS</abbr>es</strong>, or other <strong>relays</strong>) that the <strong>relay</strong> follows — with each one's account count, latest <code>seq</code>, and status.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.sync.getHostStatus</code></dt>
+			<dd>
+				<p>
+					gets the status of one upstream host.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.sync.listRepos</code></dt>
+			<dd>
+				<p>
+					lists the repositories the <strong>relay</strong> knows about — each one's <strong><abbr title="decentralized identifier">DID</abbr></strong>, latest revision, and latest commit <abbr title="content identifier">CID</abbr>.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.sync.getRepoStatus</code></dt>
+			<dd>
+				<p>
+					gets the hosting status of one repository.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.sync.requestCrawl</code></dt>
+			<dd>
+				<p>
+					asks the <strong>relay</strong> to start following a host.
+					(See “Getting a PDS Into a Relay”, below.)
+				</p>
+			</dd>
+		</dl>
+		<p>
+			For example:
+		</p>
+		<figure>
+			<pre>
+$ curl 'https://bsky.network/xrpc/com.atproto.sync.getHostStatus?hostname=blacksky.app'
+{"accountCount":43524,"hostname":"blacksky.app","seq":69168052,"status":"active"}
+
+$ curl 'https://bsky.network/xrpc/com.atproto.sync.getRepoStatus?did=did:plc:scewmn2pl3oz36mxme2b6czz'
+{"active":true,"did":"did:plc:scewmn2pl3oz36mxme2b6czz","rev":"3n2rocqrpenlz"}
+			</pre>
+		</figure>
+		<section>
+			<h1>Relays Do Not Store Repositories</h1>
+			<p>
+				You might expect to be able to download a user's whole <strong>repository</strong> from a <strong>relay</strong>.
+				But, at the time of writing, asking <code>bsky.network</code> for one (with <code>com.atproto.sync.getRepo</code>) gets an <abbr title="HyperText Transfer Protocol">HTTP</abbr> redirect to the user's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>:
+			</p>
+			<figure>
+				<pre>
+$ curl -D - -o /dev/null 'https://bsky.network/xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz36mxme2b6czz'
+HTTP/2 302
+location: https://blacksky.app/xrpc/com.atproto.sync.getRepo?did=did:plc:scewmn2pl3oz36mxme2b6czz
+				</pre>
+			</figure>
+			<p>
+				(The output has been trimmed, to make it easier to read.)
+			</p>
+			<p>
+				This is another way of seeing that a <strong>relay</strong> passes changes along, but is not where the data lives.
+				(To download a user's whole <strong>repository</strong>, see: <a href="../../pds/backup/">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Getting a PDS Into a Relay</h1>
+		<p>
+			How does a <strong>relay</strong> find out about a new <strong><abbr title="Personal Data Server">PDS</abbr></strong>?
+			The <strong><abbr title="Personal Data Server">PDS</abbr></strong> tells it — by calling <code>com.atproto.sync.requestCrawl</code> on the <strong>relay</strong>, with its own hostname:
+		</p>
+		<figure>
+			<pre>
+POST https://bsky.network/xrpc/com.atproto.sync.requestCrawl
+Content-Type: application/json
+
+{"hostname": "pds.example.com"}
+			</pre>
+		</figure>
+		<p>
+			The lexicon for <code>requestCrawl</code> describes it as:
+		</p>
+		<blockquote>
+			<p>
+				Request a service to persistently crawl hosted repos. Expected use is new PDS instances declaring their existence to Relays. Does not require auth.
+			</p>
+		</blockquote>
+		<p>
+			The <strong>relay</strong> may refuse — for example, with a <code>HostBanned</code> error.
+		</p>
+	</section>
+	<section>
+		<h1>Trust</h1>
+		<p>
+			Should you trust what comes out of a <strong>relay</strong>?
+			The specification says: not completely.
+		</p>
+		<p>
+			<strong>Repository</strong> data <em>is</em> self-certifying.
+			Each <code>#commit</code> carries a commit signed by the account's key.
+			So, an application can check it by itself — without trusting the <strong>relay</strong>, and without asking the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		</p>
+		<p>
+			<em>Identity</em> and <em>account</em> information (<code>#identity</code> and <code>#account</code> events) is <em>not</em> self-certifying.
+			An application should check it itself — for example, by resolving the <strong><abbr title="decentralized identifier">DID</abbr></strong> and <strong>handle</strong> itself.
+			(See: <a href="../../how-to/resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a>.)
+		</p>
+		<p>
+			The specification says:
+		</p>
+		<blockquote>
+			<p>
+				Intermediary services (like public relays) may do some checks to reduce network abuse, but ultimately consuming services are responsible for validating message structure and verifying authenticity.
+			</p>
+		</blockquote>
+		<p>
+			Also, a <strong>relay</strong> is allowed to change some events as they pass through.
+			For example, it may replace the <code>handle</code> in an <code>#identity</code> event with the result of its own resolution, or remove it.
+			And, it may filter out <code>#identity</code> events when the identity has not actually changed.
+		</p>
+		<p>
+			(One thing a <strong>relay</strong> should <em>not</em> do is check records against their <strong><a href="../../how-to/resolve-lexicon/">Lexicons</a></strong>.
+			The specification says relays “should not validate records against lexicons.”)
+		</p>
+	</section>
+	<section>
+		<h1>Relays and Spaces</h1>
+		<p>
+			<strong>Relays</strong> are for <em>public</em> data.
+		</p>
+		<p>
+			There is a proposal to add permissioned (private) data to <strong><abbr title="AT-Protocol">ATProto</abbr></strong>, called <strong>spaces</strong>.
+			With <strong>spaces</strong>, there are <em>no</em> <strong>relays</strong> — applications pull data directly from each user's <strong><a href="../repo-host/">repo host</a></strong>.
+			(See: <a href="../syncer/"><abbr title="AT-Protocol">ATProto</abbr> Syncer</a>.)
+		</p>
+		<p>
+			But, even an application that only uses <strong>spaces</strong> still needs a <strong>firehose</strong> (such as a <strong>relay</strong>'s), to find out about <code>#account</code> and <code>#identity</code> changes.
+		</p>
+	</section>
+	<section>
+		<h1>Running a Relay</h1>
+		<p>
+			If you want to run your own <strong>relay</strong>, Bluesky's reference implementation is the <code>relay</code> command in the <a href="https://github.com/bluesky-social/indigo"><code>indigo</code></a> repository (written in Go).
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>relay</strong>:
+		</p>
+		<ol>
+			<li>follows the <strong>firehoses</strong> of many <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>,</li>
+			<li>combines them into a single <strong>firehose</strong> (<code>com.atproto.sync.subscribeRepos</code>) — a WebSocket of <strong><abbr title="Concise Binary Object Representation">CBOR</abbr></strong> events (<code>#commit</code>, <code>#sync</code>, <code>#identity</code>, <code>#account</code>),</li>
+			<li>is an optimization — so applications do not each need to connect to every <strong><abbr title="Personal Data Server">PDS</abbr></strong>,</li>
+			<li>is not where users' data lives, and</li>
+			<li>does not need to be trusted for <strong>repository</strong> data — but applications should check identity and account information themselves.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/sync">AT Protocol Specification: Sync</a></li>
+			<li><a href="https://atproto.com/specs/event-stream">AT Protocol Specification: Event Stream</a></li>
+			<li><a href="https://atproto.com/guides/glossary">AT Protocol Glossary</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto/sync"><code>com.atproto.sync.*</code> lexicons</a> (<code>subscribeRepos</code>, <code>requestCrawl</code>, <code>listHosts</code>, <code>getHostStatus</code>, <code>listRepos</code>, <code>getRepoStatus</code>)</li>
+			<li><a href="https://github.com/bluesky-social/indigo">bluesky-social/indigo</a> (relay reference implementation)</li>
+			<li><a href="https://relay.fire.hose.cam/">relay.fire.hose.cam</a></li>
+			<li><a href="https://atproto.africa/">atproto.africa</a></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
