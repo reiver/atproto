@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Repo Host: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="lthash" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="repo host" />
+<meta name="category" content="social web" />
+<meta name="category" content="space repo" />
+<meta name="category" content="spaces" />
+<meta name="category" content="sync" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Repo Host</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Repo Host</h1>
+			<p>
+				the service that stores and serves users' records in permissioned “spaces”
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>repo host</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>service</strong> that stores users' records for <strong>spaces</strong>, and serves them to applications that are allowed to read them.
+	</p>
+	<p>
+		The proposal that defines it puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			<strong>Repo host</strong>: a service that stores and serves users' space repos.
+		</p>
+	</blockquote>
+	<p>
+		<mark>In practice, a user's <strong>repo host</strong> is just their <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) — the same server that already holds their <em>public</em> data.</mark>
+		It is not usually a separate server.
+		“<strong>Repo host</strong>” is the name for one of the <em>roles</em> a <strong><abbr title="Personal Data Server">PDS</abbr></strong> plays.
+	</p>
+	<p>
+		The proposal says:
+	</p>
+	<blockquote>
+		<p>
+			A PDS fulfills both the roles of a <strong>repo host</strong> and a <strong>space host</strong>. However, these roles are discussed separately because they do not necessarily need to be filled by a PDS.
+		</p>
+	</blockquote>
+	<p>
+		But, note that the <em>data</em> a <strong>repo host</strong> serves is <em>not</em> the user's ordinary public <strong>repository</strong>.
+		It is a separate, different kind of repository — a <strong>space repo</strong>.
+		A user has one ordinary public <strong>repository</strong>, plus one <strong>space repo</strong> for each <strong>space</strong> they have written to.
+	</p>
+	<figure>
+		<pre>
+┌──────────────────────────────────────────────────────┐
+│ Alice's PDS                                          │
+│                                                      │
+│   ┌───────────────────────────┐                      │
+│   │ public repository         │  ← the usual ATProto │
+│   └───────────────────────────┘    repository        │
+│                                                      │
+│   ┌───────────────────────────┐                      │
+│   │ space repo: forum A       │  ┐                   │
+│   └───────────────────────────┘  │                   │
+│   ┌───────────────────────────┐  │ the "repo host"   │
+│   │ space repo: forum B       │  ├ role              │
+│   └───────────────────────────┘  │                   │
+│   ┌───────────────────────────┐  │                   │
+│   │ space repo: bookmarks     │  ┘                   │
+│   └───────────────────────────┘                      │
+└──────────────────────────────────────────────────────┘
+		</pre>
+	</figure>
+	<p>
+		<strong>Note!</strong>
+		At the time of writing, <strong>spaces</strong> and <strong>repo hosts</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		This article describes the proposal as of November 2026.
+	</p>
+	<section>
+		<h1>Spaces, Briefly</h1>
+		<p>
+			A <strong>space</strong> is a group of records that only some people (and some applications) are allowed to read — for example: a private forum, a paid newsletter, or a user's bookmarks.
+		</p>
+		<p>
+			The records in a <strong>space</strong> are spread out.
+			Each user stores <em>their own</em> records for a <strong>space</strong> on <em>their own</em> <strong>repo host</strong>.
+		</p>
+		<p>
+			There are 3 roles involved:
+		</p>
+		<dl>
+			<dt>repo host</dt>
+			<dd>
+				<p>
+					stores and serves each user's records for a <strong>space</strong>.
+					(This article.)
+				</p>
+			</dd>
+
+			<dt><a href="../space-host/">space host</a></dt>
+			<dd>
+				<p>
+					answers for a <strong>space</strong> as a whole — who may read it, who has written to it, and who to notify when it changes.
+				</p>
+			</dd>
+
+			<dt><a href="../syncer/">syncer</a></dt>
+			<dd>
+				<p>
+					an application that keeps its own copy of a <strong>space</strong>, by pulling from the <strong>repo hosts</strong>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Of these 3, the <strong>repo host</strong> is the only one that is the <em>source of truth</em> for the records themselves.
+			The <strong>space host</strong> only knows who has records, and when they changed.
+			The <strong>syncer</strong> only has a copy.
+		</p>
+	</section>
+	<section>
+		<h1>Space Repos</h1>
+		<p>
+			A <strong>space repo</strong> is one user's records in one <strong>space</strong>.
+		</p>
+		<p>
+			Like an ordinary <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>repository</strong>, it is a key/value store:
+		</p>
+		<ul>
+			<li>each <em>key</em> is a path — a collection <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> and a record-key, such as <code>com.atmoboards.thread/3mwcj3b6uak2f</code>, and</li>
+			<li>each <em>value</em> is a record.</li>
+		</ul>
+		<p>
+			A record in a <strong>space repo</strong> is addressed with an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> that includes the <strong>space</strong>, and the author:
+		</p>
+		<figure>
+			<pre>
+at://did:example:forum/space/com.atmoboards.forum/general/did:example:alice/com.atmoboards.thread/3mwcj3b6uak2f
+     └─────────────────────────┬────────────────────────┘ └───────┬───────┘ └────────────────┬────────────────┘
+                               │                                  │                          │
+                             space                             author                     record
+			</pre>
+		</figure>
+		<p>
+			But, a <strong>space repo</strong> is <em>different</em> from an ordinary public <strong>repository</strong> in some important ways:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th></th>
+						<th>public repository</th>
+						<th>space repo</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>how many per user</td>
+						<td>one</td>
+						<td>one per <strong>space</strong></td>
+					</tr>
+					<tr>
+						<td>who may read it</td>
+						<td>anyone</td>
+						<td>only holders of a <strong>space credential</strong> (or the user's own apps)</td>
+					</tr>
+					<tr>
+						<td>commit is based on</td>
+						<td>a Merkle Search Tree (<abbr title="Merkle Search Tree">MST</abbr>) root</td>
+						<td>an <strong>LtHash</strong> set-hash digest</td>
+					</tr>
+					<tr>
+						<td>commit is proven by</td>
+						<td>a signature</td>
+						<td>a <abbr title="Message Authentication Code">MAC</abbr> (<abbr title="Hash-based Message Authentication Code">HMAC</abbr>)</td>
+					</tr>
+					<tr>
+						<td>downloaded as</td>
+						<td>a <abbr title="Content Addressable Archive">CAR</abbr> file</td>
+						<td>a <strong>STAR</strong> file</td>
+					</tr>
+					<tr>
+						<td>changes broadcast through</td>
+						<td><strong>relays</strong> (the “firehose”)</td>
+						<td>no relays — <strong>syncers</strong> pull directly</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<section>
+			<h1>Creating and Clearing</h1>
+			<p>
+				There is no “create a <strong>space repo</strong>” operation.
+				A user's <strong>space repo</strong> is created automatically, the first time they write a record to that <strong>space</strong>.
+			</p>
+			<p>
+				There is also no “delete a <strong>space repo</strong>” operation.
+				Instead, a <strong>space repo</strong> can be <em>cleared</em> — all its records deleted at once — with <code>com.atproto.space.clearRecords</code>.
+				An empty <strong>space repo</strong> and a non-existent one are treated as the same thing.
+			</p>
+			<p>
+				(Why clear rather than delete?
+				Because the <strong>repo host</strong> still needs to be able to answer <strong>syncers</strong> with a valid <strong>commit</strong> that shows the records are gone.)
+			</p>
+			<p>
+				A <strong>repo host</strong> MAY “garbage collect” an empty <strong>space repo</strong> — but SHOULD wait at least 72 hours after it was cleared, so the change has time to reach the <strong>space host</strong> and the <strong>syncers</strong>.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>The Commit</h1>
+		<p>
+			Each <strong>space repo</strong> has a <strong>commit</strong>.
+			The <strong>commit</strong> summarizes the whole <strong>space repo</strong>, so that a <strong>syncer</strong> can check whether its copy matches — without downloading everything again.
+		</p>
+		<p>
+			A <strong>commit</strong> has these fields:
+		</p>
+		<dl>
+			<dt><code>ver</code></dt>
+			<dd>
+				<p>
+					the commit format version — currently <code>1</code>.
+				</p>
+			</dd>
+
+			<dt><code>repo</code></dt>
+			<dd>
+				<p>
+					the <strong><abbr title="decentralized identifier">DID</abbr></strong> of the user whose <strong>space repo</strong> this is.
+				</p>
+			</dd>
+
+			<dt><code>space</code></dt>
+			<dd>
+				<p>
+					the <strong>space</strong>'s <abbr title="Uniform Resource Identifier">URI</abbr> — <code>at://<var>authority</var>/space/<var>type</var>/<var>skey</var></code>.
+				</p>
+			</dd>
+
+			<dt><code>rev</code></dt>
+			<dd>
+				<p>
+					the revision — a <abbr title="timestamp identifier">TID</abbr>, which goes up with every change.
+				</p>
+			</dd>
+
+			<dt><code>data</code></dt>
+			<dd>
+				<p>
+					a 32-byte digest of <em>all</em> the records in the <strong>space repo</strong>.
+				</p>
+			</dd>
+		</dl>
+		<section>
+			<h1>The Digest: LtHash</h1>
+			<p>
+				The <code>data</code> digest is computed using a <strong>set hash</strong> called <strong>LtHash</strong>.
+			</p>
+			<p>
+				A <strong>set hash</strong> has 2 useful properties:
+			</p>
+			<ul>
+				<li>
+					it does not depend on the <em>order</em> records were added — 2 <strong>space repos</strong> with the same records always have the same digest, and
+				</li>
+				<li>
+					adding or removing a single record is cheap — you do not need to re-hash everything.
+				</li>
+			</ul>
+			<p>
+				This means a <strong>repo host</strong> can keep the digest up-to-date with each write.
+				(And, so can a <strong>syncer</strong>, as it applies each change to its copy.)
+			</p>
+			<p>
+				Here is how it works:
+			</p>
+			<ol>
+				<li>
+					The state is 2048 bytes — used as 1024 little-endian unsigned 16-bit numbers (“lanes”).
+					It starts out as all zeros.
+				</li>
+				<li>
+					Each record becomes one <em>element</em> — the string <code><var>collection</var>/<var>rkey</var>/<var>record_cid</var></code>.
+				</li>
+				<li>
+					To <strong>add</strong> an element: expand it to 2048 bytes using <strong>BLAKE3</strong> in <abbr title="extendable-output function">XOF</abbr> (extendable-output) mode, read those bytes as 1024 little-endian <code>uint16</code> lanes, and add each lane to the matching state lane (wrapping around at 65536).
+				</li>
+				<li>
+					To <strong>remove</strong> an element: do the same, but <em>subtract</em> instead of add.
+				</li>
+				<li>
+					The <strong>commit</strong>'s <code>data</code> is the <strong>SHA-256</strong> of the 2048-byte state.
+				</li>
+			</ol>
+			<figure>
+				<pre>
+element:  "com.atmoboards.thread/3mwcj3b6uak2f/bafyrei…"
+                              │
+                              ▼  BLAKE3 (XOF), 2048 bytes
+          ┌──────┬──────┬──────┬─────┬──────┐
+          │ e₀   │ e₁   │ e₂   │  …  │ e₁₀₂₃│  (1024 × uint16)
+          └──────┴──────┴──────┴─────┴──────┘
+             +      +      +           +       (mod 65536)
+          ┌──────┬──────┬──────┬─────┬──────┐
+state:    │ s₀   │ s₁   │ s₂   │  …  │ s₁₀₂₃│  (1024 × uint16)
+          └──────┴──────┴──────┴─────┴──────┘
+                              │
+                              ▼  SHA-256
+                     commit "data" (32 bytes)
+				</pre>
+			</figure>
+			<p>
+				Since an empty state is all zeros, an empty <strong>space repo</strong>'s <code>data</code> is always the <strong>SHA-256</strong> of 2048 zero bytes:
+			</p>
+			<figure>
+				<pre>
+$ head -c 2048 /dev/zero | shasum -a 256
+e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad  -
+				</pre>
+			</figure>
+			<p>
+				(This matches the value given in the proposal.)
+			</p>
+		</section>
+		<section>
+			<h1>Example Code</h1>
+			<p>
+				Here is an example of <strong>LtHash</strong> in the Go programming-language.
+				It uses the <code>lukechampine.com/blake3</code> package for <strong>BLAKE3</strong>.
+			</p>
+			<figure>
+				<pre><code>
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
+
+	"lukechampine.com/blake3"
+)
+
+// LtHash is the running set hash of a space repo.
+// It is 2048 bytes, used as 1024 little-endian uint16 lanes.
+type LtHash [2048]byte
+
+// lanes expands an element to 2048 bytes, using BLAKE3 in XOF mode.
+func lanes(element string) []byte {
+	hasher := blake3.New(32, nil)
+	hasher.Write([]byte(element))
+
+	var expanded [2048]byte
+	hasher.XOF().Read(expanded[:])
+	return expanded[:]
+}
+
+// Add adds an element to the set hash.
+// An element is "{collection}/{rkey}/{record_cid}".
+func (h *LtHash) Add(element string) {
+	expanded := lanes(element)
+	for i := 0; i &lt; len(h); i += 2 {
+		lane := binary.LittleEndian.Uint16(h[i:]) + binary.LittleEndian.Uint16(expanded[i:])
+		binary.LittleEndian.PutUint16(h[i:], lane)
+	}
+}
+
+// Remove removes an element from the set hash.
+func (h *LtHash) Remove(element string) {
+	expanded := lanes(element)
+	for i := 0; i &lt; len(h); i += 2 {
+		lane := binary.LittleEndian.Uint16(h[i:]) - binary.LittleEndian.Uint16(expanded[i:])
+		binary.LittleEndian.PutUint16(h[i:], lane)
+	}
+}
+
+// Digest returns the commit's "data" — sha256 of the 2048-byte state.
+func (h *LtHash) Digest() string {
+	digest := sha256.Sum256(h[:])
+	return hex.EncodeToString(digest[:])
+}
+
+func main() {
+	const post1 = "com.atmoboards.thread/3mwcj3b6uak2f/bafyreia7rgxu7467phwpcgzaw62l5bzmxufkpikrc5zm4q3xhjmuhq4pti"
+	const post2 = "com.atmoboards.reply/3mwcj3b6uak2g/bafyreie5737gdxlw5i64vzichcalba3z2v5n6icifvx5xytvske7mr3hpm"
+
+	var a LtHash
+	fmt.Println("empty:         ", a.Digest())
+
+	a.Add(post1)
+	a.Add(post2)
+	fmt.Println("post1 + post2: ", a.Digest())
+
+	var b LtHash
+	b.Add(post2)
+	b.Add(post1)
+	fmt.Println("post2 + post1: ", b.Digest())
+
+	b.Remove(post2)
+	b.Remove(post1)
+	fmt.Println("removed both:  ", b.Digest())
+}
+				</code></pre>
+			</figure>
+			<p>
+				Running it gives:
+			</p>
+			<figure>
+				<pre>
+$ go run .
+empty:          e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+post1 + post2:  d9e3e8e12409b990a1fa9409bec0035bf3db7915c0d495da1a190c8525cd8fec
+post2 + post1:  d9e3e8e12409b990a1fa9409bec0035bf3db7915c0d495da1a190c8525cd8fec
+removed both:   e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+				</pre>
+			</figure>
+			<p>
+				Notice that:
+			</p>
+			<ul>
+				<li>the empty digest matches the value from the proposal,</li>
+				<li>adding the 2 elements in either order gives the same digest, and</li>
+				<li>removing both elements brings it back to the empty digest.</li>
+			</ul>
+			<p>
+				(The elements in this example are made up, for illustration.
+				And, at the time of writing, the proposal does not include any test-vectors to check an <strong>LtHash</strong> implementation against.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Serving Space Repos</h1>
+		<p>
+			A <strong>repo host</strong> lets applications read <strong>space repos</strong> through these <strong>XRPC</strong> API end-points:
+		</p>
+		<dl>
+			<dt><code>com.atproto.space.getRecord</code></dt>
+			<dd>
+				<p>
+					get a single record.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.space.listRecords</code></dt>
+			<dd>
+				<p>
+					list the records in a <strong>space repo</strong>.
+					(Set <code>excludeValues</code> to get only the paths and <abbr title="content identifier">CID</abbr>s.)
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.space.getLatestCommit</code></dt>
+			<dd>
+				<p>
+					get the current <strong>commit</strong>.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.space.listRepoOps</code></dt>
+			<dd>
+				<p>
+					get the changes since a given revision.
+					(The main way <strong>syncers</strong> stay up-to-date.)
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.space.getRepo</code></dt>
+			<dd>
+				<p>
+					download the whole <strong>space repo</strong>, as a <strong>STAR</strong> file.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.space.listBlobs</code></dt>
+			<dd>
+				<p>
+					list the <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> referred to by records in a <strong>space repo</strong>.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.space.getBlob</code></dt>
+			<dd>
+				<p>
+					download a single <strong><abbr title="Binary Large OBject">BLOB</abbr></strong>.
+				</p>
+			</dd>
+		</dl>
+		<section>
+			<h1>Who May Read</h1>
+			<p>
+				Each of these end-points accepts <em>either</em>:
+			</p>
+			<ul>
+				<li>an <strong>OAuth</strong> session from the user's own application (with a covering <code>space:</code> scope) — for reading the user's <em>own</em> <strong>space repo</strong>, or</li>
+				<li>a <strong>space credential</strong> — for reading <em>any</em> <strong>space repo</strong> in the <strong>space</strong>.</li>
+			</ul>
+			<p>
+				A <strong>space credential</strong> is a short-lived token, signed by the <strong>space authority</strong>, and issued by the <strong><a href="../space-host/">space host</a></strong>.
+				The <strong>repo host</strong> can check it by itself — it does not need to ask the <strong>space host</strong>.
+			</p>
+			<p>
+				A request with a <strong>space credential</strong> looks like this:
+			</p>
+			<figure>
+				<pre>
+Authorization: Atproto-Space-Credential &lt;space-credential&gt;
+Atproto-Space-Audience: did:plc:repoOwner
+Signature-Input: sig=("authorization" "atproto-space-audience");tag="atproto-space-credential"
+Signature: sig=:wNmSUA...:
+				</pre>
+			</figure>
+			<p>
+				When it gets one, the <strong>repo host</strong> MUST check (among other things):
+			</p>
+			<ul>
+				<li>the <strong>space credential</strong> itself — its type, issuer, signature, <strong>space</strong>, and expiration,</li>
+				<li>that there is exactly one signature with the <code>tag</code> <code>atproto-space-credential</code>, covering exactly <code>("authorization" "atproto-space-audience")</code>,</li>
+				<li>that the signature was made with the key in the <strong>space credential</strong>'s <code>cnf.kid</code> (a P-256 <code>did:key</code>), and</li>
+				<li>that <code>Atproto-Space-Audience</code> is the <strong><abbr title="decentralized identifier">DID</abbr></strong> of the <strong>space repo</strong>'s owner.</li>
+			</ul>
+			<p>
+				A <strong>repo host</strong> MUST also reject any <strong>space credential</strong> that the <strong>space authority</strong> has revoked.
+				(The <strong>space host</strong> sends revocations with <code>com.atproto.space.notifyCredentialsRevoked</code>, identifying each <strong>space credential</strong> by its <code>jti</code>.
+				The <strong>repo host</strong> must remember each revocation for at least 60 minutes.)
+			</p>
+		</section>
+		<section>
+			<h1>The Operation Log</h1>
+			<p>
+				To support <code>listRepoOps</code>, a <strong>repo host</strong> keeps an <strong>operation log</strong> of recent writes to each <strong>space repo</strong>.
+				Each entry has:
+			</p>
+			<figure>
+				<pre>
+{ rev, collection, rkey, cid, prev }
+				</pre>
+			</figure>
+			<p>
+				<code>cid</code> is <code>null</code> for a delete, and <code>prev</code> is <code>null</code> for a create.
+				Changes made together (atomically) share the same <code>rev</code>.
+			</p>
+			<p>
+				By default, <code>listRepoOps</code> includes each created or updated record's value — so a <strong>syncer</strong> does not need to call <code>getRecord</code> for each one.
+				Every response also includes the current <strong>commit</strong>.
+			</p>
+			<p>
+				The <strong>operation log</strong> is only an optimization.
+				A <strong>repo host</strong> may shorten it, or drop it — keeping only some recent window.
+				(A <strong>syncer</strong> that asks for a revision that is no longer in the log falls back to downloading the whole <strong>space repo</strong> with <code>getRepo</code>.)
+			</p>
+		</section>
+		<section>
+			<h1>STAR Files</h1>
+			<p>
+				<code>getRepo</code> returns the whole <strong>space repo</strong> as a <strong>STAR</strong> file.
+				A <strong>STAR</strong> file is a header followed by a sequence of key/value pairs:
+			</p>
+			<figure>
+				<pre>
+|-------- header --------| |------------------------- data (records) ---------------------------| | end |
+[ magic | len | metadata ] [ 1 | len | path | len | record ] [ 1 | len | path | len | record ]... [  0  ]
+				</pre>
+			</figure>
+			<ul>
+				<li>the <code>magic</code> bytes are <code>0x2A 0x6C 0x01 0x00</code>,</li>
+				<li>each <code>len</code> is an unsigned varint,</li>
+				<li>the <code>metadata</code> contains <code>$type</code> (<code>atproto-space-repo</code>) and all the fields of the <strong>commit</strong>,</li>
+				<li>each <code>path</code> is <code><var>collection</var>/<var>rkey</var></code>, and each <code>record</code> is the record's canonical <strong>DRISL</strong> encoding,</li>
+				<li>records MUST be in strict lexicographic order of their path bytes, with no duplicates.</li>
+			</ul>
+			<p>
+				Because the <strong>commit</strong>'s digest is in the header, a reader can check the whole file as it streams it in — by computing the <strong>LtHash</strong> as it goes, and comparing at the end.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Proving the Data Is Real</h1>
+		<p>
+			Records in a public <strong>repository</strong> are proven with a <em>signature</em>.
+			Anyone can check it.
+		</p>
+		<p>
+			For <strong>space repos</strong>, that would be a problem — if private data leaked, the signature would prove it was real.
+			So, <strong>space repos</strong> do <em>not</em> use signatures.
+		</p>
+		<p>
+			Instead, each request gets a temporary shared secret between the <strong>syncer</strong> and the <strong>repo host</strong>.
+			The <strong>repo host</strong> uses it to compute a <strong><abbr title="Message Authentication Code">MAC</abbr></strong> over the <strong>commit</strong> (or record).
+			The <strong>syncer</strong> can check the <strong><abbr title="Message Authentication Code">MAC</abbr></strong>.
+			But, since the <strong>syncer</strong> knows the secret too, the <strong><abbr title="Message Authentication Code">MAC</abbr></strong> proves nothing to anyone else.
+		</p>
+		<p>
+			To make this work, the <strong>repo host</strong>:
+		</p>
+		<ol>
+			<li>
+				holds a dedicated P-256 key-pair for each account — the <strong><abbr title="key encapsulation mechanism">KEM</abbr></strong> key — and publishes its public-key in the account's <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, with the <code>id</code> <code><var>DID</var>#atproto_kem</code>.
+				(This should be a different key from the <code>#atproto</code> signing key.)
+			</li>
+			<li>
+				reads the <strong>syncer</strong>'s temporary public-key from the <code>keyid</code> in its <code>Accept-Signature</code> header,
+			</li>
+			<li>
+				combines it with the <strong><abbr title="key encapsulation mechanism">KEM</abbr></strong> private-key to get the shared secret (using <strong><abbr title="Hybrid Public Key Encryption">HPKE</abbr></strong> secret export, <abbr title="Request for Comments">RFC</abbr> 9180), and
+			</li>
+			<li>
+				returns an <code>hmac-sha256</code> <abbr title="HyperText Transfer Protocol">HTTP</abbr> Message Signature over an <code>Atproto-Space-Commit</code> (or <code>Atproto-Space-Record</code>) header.
+			</li>
+		</ol>
+		<p>
+			For example, a <strong>syncer</strong> asks for a <strong><abbr title="Message Authentication Code">MAC</abbr></strong> like this:
+		</p>
+		<figure>
+			<pre>
+Accept-Signature: mac=("atproto-space-commit";sf);keyid="did:key:zDna...";tag="atproto-space-commit"
+			</pre>
+		</figure>
+		<p>
+			And the <strong>repo host</strong> responds with:
+		</p>
+		<figure>
+			<pre>
+Atproto-Space-Commit: ver=1, repo="did:example:alice", space="at://did:example:forum/space/com.atmoboards.forum/general", rev="3mwcj3b6uak2f", data=:q3J0...=:
+Signature-Input: mac=("atproto-space-commit";sf);keyid="did:key:zDna...";tag="atproto-space-commit"
+Signature: mac=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:
+Vary: Accept-Signature
+			</pre>
+		</figure>
+		<p>
+			<code>getLatestCommit</code>, <code>getRepo</code>, and <code>listRepoOps</code> use the <code>atproto-space-commit</code> profile.
+			<code>getRecord</code> uses the <code>atproto-space-record</code> profile, which covers the record's full <abbr title="Uniform Resource Identifier">URI</abbr> and <abbr title="content identifier">CID</abbr>.
+		</p>
+		<p>
+			The <strong>repo host</strong> returns an error if <code>Accept-Signature</code> is missing or malformed, asks for more than one signature with the profile's <code>tag</code>, asks for other parameters, or has an invalid key.
+		</p>
+	</section>
+	<section>
+		<h1>Notifying the Space Host</h1>
+		<p>
+			Whenever a user writes to a <strong>space repo</strong>, the <strong>repo host</strong> tells the <strong><a href="../space-host/">space host</a></strong>, by calling <code>com.atproto.space.notifyRepoUpdate</code> on it, with the <strong>space repo</strong>'s new <code>repoRev</code> and <code>data</code>.
+			(Unless the user <em>is</em> the <strong>space authority</strong>.)
+		</p>
+		<figure>
+			<pre>
+┌───────┐  write  ┌─────────────┐  notifyRepoUpdate   ┌────────────┐  notifySpaceUpdate  ┌─────────┐
+│ Alice │ ──────► │  repo host  │ ──────────────────► │ space host │ ──────────────────► │ syncers │
+└───────┘         └─────────────┘  repoRev, data      └────────────┘                     └─────────┘
+			</pre>
+		</figure>
+		<p>
+			A few rules:
+		</p>
+		<ul>
+			<li>no registration is needed — it is automatic,</li>
+			<li>the call is authenticated with service auth,</li>
+			<li>the <strong>repo host</strong> is responsible for <em>reliably</em> keeping the <strong>space host</strong> up-to-date — retrying network failures and temporary <abbr title="HyperText Transfer Protocol">HTTP</abbr> errors with exponential backoff (but stopping on permanent errors),</li>
+			<li><code>repoRev</code> must always go up, and must not be in the future.</li>
+		</ul>
+		<p>
+			A user's <strong>repo host</strong> does not need to check whether a <strong>space</strong> exists before accepting a write to it.
+			(Unless the user is <em>also</em> the <strong>space authority</strong> — in that case, the <strong>space</strong> must already exist.)
+		</p>
+	</section>
+	<section>
+		<h1>Other Responsibilities</h1>
+		<dl>
+			<dt>writing records</dt>
+			<dd>
+				<p>
+					When the <strong>repo host</strong> is a <strong><abbr title="Personal Data Server">PDS</abbr></strong>, it also lets the user's own applications (through OAuth) write to their <strong>space repos</strong> — with <code>com.atproto.space.createRecord</code>, <code>putRecord</code>, <code>deleteRecord</code>, <code>applyWrites</code>, and <code>clearRecords</code>.
+					(Writes only accept OAuth — never a <strong>space credential</strong> — since a write belongs to the user who made it.)
+				</p>
+			</dd>
+
+			<dt>takedowns</dt>
+			<dd>
+				<p>
+					A <strong>repo host</strong> answers with the same errors as for public data — such as <code>RepoTakendown</code> for a taken-down account, and <code>RepoDeactivated</code> for a deactivated one.
+					An account takedown affects all of the account's <strong>space repos</strong>.
+				</p>
+			</dd>
+
+			<dt>account migration</dt>
+			<dd>
+				<p>
+					When an account moves to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong>, each <strong>space repo</strong> is exported from the old one with <code>com.atproto.space.getRepo</code>, and imported into the new one with <code>com.atproto.space.importRepo</code>.
+					The new <strong>repo host</strong> may give it a new <code>rev</code>, but its <code>data</code> stays the same.
+					The new <strong>repo host</strong> also makes its own <strong><abbr title="key encapsulation mechanism">KEM</abbr></strong> key, and publishes it in the account's <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+					(The <strong>operation log</strong> starts fresh.)
+					Even a taken-down account should still be able to export its <strong>space repos</strong>, so that it can move away.
+				</p>
+			</dd>
+		</dl>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>repo host</strong>:
+		</p>
+		<ol>
+			<li>is usually just the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>,</li>
+			<li>stores the user's <strong>space repos</strong> — one per <strong>space</strong>, separate from their public <strong>repository</strong>,</li>
+			<li>keeps an <strong>LtHash</strong> digest of each <strong>space repo</strong>, in its <strong>commit</strong>,</li>
+			<li>serves <strong>space repos</strong> to the user's own apps (with OAuth) and to <strong>syncers</strong> (with a <strong>space credential</strong>),</li>
+			<li>proves the data with a <strong><abbr title="Message Authentication Code">MAC</abbr></strong>, not a signature, and</li>
+			<li>tells the <strong>space host</strong> about every write.</li>
+		</ol>
+		<p>
+			Again, this is all a <em>proposal</em>.
+			Details are likely to change.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026)</li>
+			<li><a href="https://eprint.iacr.org/2019/227">LtHash paper</a> (linked from the proposal)</li>
+			<li><a href="https://dasl.ing/star.html">DASL: STAR</a> (linked from the proposal)</li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9180">RFC 9180: Hybrid Public Key Encryption</a> (linked from the proposal)</li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc9421">RFC 9421: HTTP Message Signatures</a> (linked from the proposal)</li>
+			<li><a href="https://pkg.go.dev/lukechampine.com/blake3"><code>lukechampine.com/blake3</code></a> (Go package used in the example code)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
