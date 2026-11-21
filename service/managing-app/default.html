@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Managing App: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="access control" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="managed space" />
+<meta name="category" content="managing app" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="social web" />
+<meta name="category" content="spaces" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Managing App</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Managing App</h1>
+			<p>
+				the service that decides who may read and write a “managed” space
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>managing app</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) service that decides who may read, and who may write, a permissioned <strong>space</strong>.
+	</p>
+	<p>
+		The proposal that defines it puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			<code>com.atproto.managedspace.policy</code> delegates access decisions to an external <strong>managing app</strong>. This enables dynamic policies (e.g. follower-gating or paid subscriptions) without the PDS maintaining a materialized member list.
+		</p>
+	</blockquote>
+	<p>
+		<mark>A <strong>managing app</strong> does <em>not</em> store records, does <em>not</em> serve records, and is <em>not</em> called by users or by applications that want to read the <strong>space</strong>.
+		It is called by exactly one thing — the <strong><a href="../space-host/">space host</a></strong> — and it answers exactly one question: <em>“may this account read, and may it write?”</em></mark>
+	</p>
+	<p>
+		Think of it as the <strong>space host</strong>'s outside advisor.
+		The <strong>space host</strong> still does all the work (issuing <strong>space credentials</strong>, keeping the <strong>writer set</strong>, sending notifications).
+		It just asks the <strong>managing app</strong> before it says yes.
+	</p>
+	<p>
+		<strong>Note!</strong>
+		At the time of writing, <strong>spaces</strong> and <strong>managing apps</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		This article describes the proposal as of November 2026.
+		And, the proposal describes the <strong>managing app</strong> in only a few paragraphs — so, some details are not yet decided.
+		(See “What the Proposal Leaves Open”, below.)
+	</p>
+	<section>
+		<h1>Spaces and Policies, Briefly</h1>
+		<p>
+			A <strong>space</strong> is a group of records that only some people (and some applications) are allowed to read — for example: a private forum, a paid newsletter, or a user's bookmarks.
+		</p>
+		<p>
+			A <strong>space</strong> is identified by 3 things — its <strong>space authority</strong> (a <strong><abbr title="decentralized identifier">DID</abbr></strong>), its <strong>space type</strong> (an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>), and its <strong>space key</strong> (a string):
+		</p>
+		<figure>
+			<pre>
+at://did:example:alice/space/com.example.newsletter/weekly
+     └───────┬───────┘       └──────────┬─────────┘ └──┬─┘
+             │                          │              │
+      space authority              space type      space key
+			</pre>
+		</figure>
+		<p>
+			The <strong>space host</strong> (usually the <strong>space authority</strong>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong>) decides who may read the <strong>space</strong>, and whose writes count.
+			<em>How</em> it decides is set by the <strong>space</strong>'s <strong>policy</strong>.
+			Every <strong><abbr title="Personal Data Server">PDS</abbr></strong> MUST support these 3 baseline <strong>policies</strong>:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Policy</th>
+						<th>How Access Is Decided</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.personalspace.policy</code></td>
+						<td>only the <strong>space authority</strong>'s own account has access</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.memberspace.policy</code></td>
+						<td>checked against a member list kept by the <strong><abbr title="Personal Data Server">PDS</abbr></strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.managedspace.policy</code></td>
+						<td>handed off to an outside service — the <strong>managing app</strong></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			The <strong>managing app</strong> only exists for the third one — a <strong>managed space</strong>.
+		</p>
+		<p>
+			(For more on <strong>spaces</strong>, see: <a href="../../space/"><abbr title="AT-Protocol">ATProto</abbr> Spaces</a>, <a href="../syncer/"><abbr title="AT-Protocol">ATProto</abbr> Syncer</a> and <a href="../space-host/"><abbr title="AT-Protocol">ATProto</abbr> Space Host</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Why Have a Managing App?</h1>
+		<p>
+			A member list works well when the members do not change much — for example, a private forum where someone adds and removes people by hand.
+		</p>
+		<p>
+			But, some rules are not really lists.
+			For example:
+		</p>
+		<ul>
+			<li>“people I follow may read this”,</li>
+			<li>“people who have paid for this month may read this”.</li>
+		</ul>
+		<p>
+			With a member list, someone would have to keep updating the list every time someone followed, unfollowed, paid, or stopped paying.
+			(The proposal calls this a “materialized member list”.)
+		</p>
+		<p>
+			With a <strong>managing app</strong>, nobody keeps a list on the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			Instead, each time the <strong>space host</strong> needs to know, it asks the <strong>managing app</strong> — and the <strong>managing app</strong> works out the answer however it wants (by checking a follow graph, a payment system, a database, etc).
+		</p>
+	</section>
+	<section>
+		<h1>Where a Managing App Fits</h1>
+		<p>
+			Here is where a <strong>managing app</strong> sits, compared to the other services in a <strong>space</strong>:
+		</p>
+		<figure>
+			<pre>
+┌─────────────┐  authorizeSpaceSync   ┌────────────┐   checkAccess    ┌──────────────┐
+│   syncer    │ ────────────────────► │            │ ───────────────► │              │
+└─────────────┘                       │            │                  │              │
+                                      │ space host │                  │ managing app │
+┌─────────────┐  notifyRepoUpdate     │            │ ◄─────────────── │              │
+│  repo host  │ ────────────────────► │            │   read, write    │              │
+└─────────────┘                       └────────────┘                  └──────────────┘
+			</pre>
+		</figure>
+		<p>
+			Notice that the <strong>managing app</strong> only ever talks to the <strong>space host</strong>.
+			<strong><a href="../syncer/">Syncers</a></strong> and <strong><a href="../repo-host/">repo hosts</a></strong> never call it — they might not even know it exists.
+		</p>
+		<p>
+			Who would run a <strong>managing app</strong>?
+			Whoever owns the rule — for example, a newsletter service that knows who has paid.
+			That might be the same application that also runs a <strong>syncer</strong> for the <strong>space</strong> (to show the newsletter to its readers).
+			Nothing in the proposal says they have to be different.
+			But, they are different <em>roles</em>.
+		</p>
+	</section>
+	<section>
+		<h1>Setting Up a Managed Space</h1>
+		<p>
+			A <strong>space</strong> is created by an application calling <code>com.atproto.space.createSpace</code> on the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> (which needs an OAuth scope with <code>manage=create</code>).
+			The user who creates it becomes the <strong>space authority</strong>.
+			An existing <strong>space</strong> can be switched to this <strong>policy</strong> with <code>com.atproto.space.updateSpace</code> (which needs <code>manage=update</code>).
+		</p>
+		<p>
+			Both take the full <strong>policy</strong> object.
+			For a <strong>managed space</strong>, it looks something like this:
+		</p>
+		<figure>
+			<pre>
+{
+  "$type": "com.atproto.managedspace.policy",
+  "managingApp": "did:web:access.example.com#managing_app",
+  "publishPolicy": false
+}
+			</pre>
+		</figure>
+		<dl>
+			<dt><code>managingApp</code></dt>
+			<dd>
+				<p>
+					<em>required</em>.
+					Which service to ask.
+					It is a <code>did#serviceId</code> reference — a <strong><abbr title="decentralized identifier">DID</abbr></strong>, a <code>#</code>, and the <code>id</code> of a service in that <strong><abbr title="decentralized identifier">DID</abbr></strong>'s <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+				</p>
+			</dd>
+
+			<dt><code>publishPolicy</code></dt>
+			<dd>
+				<p>
+					<em>optional</em> (default <code>false</code>).
+					If <code>true</code>, the <strong><abbr title="Personal Data Server">PDS</abbr></strong> publishes this <strong>policy</strong> object as a record (collection <code>com.atproto.space.policy</code>, record key <code>self</code>) in the <strong>space authority</strong>'s own <strong>space repo</strong>.
+					That way readers (and <strong>syncers</strong>) can see which <strong>managing app</strong> the <strong>space</strong> uses.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			(The <code>did:web:access.example.com#managing_app</code> value above is made up for this article.
+			The proposal does not say what the service's <code>id</code> or <code>type</code> should be.)
+		</p>
+		<section>
+			<h1>Finding the Managing App</h1>
+			<p>
+				To turn the <code>managingApp</code> value into a <abbr title="Uniform Resource Locator">URL</abbr>, split it at the <code>#</code>, resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, and look for the service whose <code>id</code> matches.
+				Its <code>serviceEndpoint</code> is where to send requests.
+				(This is the same way an <code>atproto-proxy</code> header names a service — see <a href="../appview/"><abbr title="AT-Protocol">ATProto</abbr> AppView</a>.)
+			</p>
+			<figure>
+				<pre>
+did:web:access.example.com#managing_app
+└────────────┬───────────┘ └─────┬────┘
+             │                   │
+             ▼                   ▼
+   resolve this DID to   find the service whose
+   its DID document      "id" is "#managing_app"
+				</pre>
+			</figure>
+			<p>
+				For example, the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> might contain:
+			</p>
+			<figure>
+				<pre>
+{
+  "id": "did:web:access.example.com",
+  "service": [
+    {
+      "id": "#managing_app",
+      "type": "ManagingApp",
+      "serviceEndpoint": "https://access.example.com"
+    }
+  ]
+}
+				</pre>
+			</figure>
+			<p>
+				(For how to resolve a <strong><abbr title="decentralized identifier">DID</abbr></strong>, see: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.
+				It is the same process — just looking for a different service.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>The One End-Point: checkAccess</h1>
+		<p>
+			A <strong>managing app</strong> implements one <strong>XRPC</strong> API end-point — <code>checkAccess</code>.
+			The proposal describes it like this:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Method</th>
+						<th>Type</th>
+						<th>Auth</th>
+						<th>Description</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>checkAccess</code></td>
+						<td>query</td>
+						<td>service auth (from the space authority)</td>
+						<td>Implemented by the <code>managingApp</code> (not the PDS). Returns an account's <code>read</code> and <code>write</code> access to the space.</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			Being a “query” means it is an <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code>, with its inputs in the query string.
+		</p>
+		<section>
+			<h1>What Goes In</h1>
+			<p>
+				The proposal says the <strong>space host</strong> passes 3 things.
+				(The parameter names come from the draft lexicon — see “What the Proposal Leaves Open”, below.)
+			</p>
+			<dl>
+				<dt>the space (<code>space</code>)</dt>
+				<dd>
+					<p>
+						which <strong>space</strong> is being asked about — as a <strong>space</strong> <abbr title="Uniform Resource Identifier">URI</abbr> (<code>at://…/space/…/…</code>).
+						Required.
+					</p>
+				</dd>
+
+				<dt>the account (<code>repo</code>)</dt>
+				<dd>
+					<p>
+						the <strong><abbr title="decentralized identifier">DID</abbr></strong> of the account being checked.
+						(The draft lexicon makes it optional.)
+					</p>
+				</dd>
+
+				<dt>the client (<code>clientId</code>)</dt>
+				<dd>
+					<p>
+						the <em>attested</em> OAuth <code>client_id</code> of the application, if one was presented.
+						(That is, the application proved who it is with a <strong>client attestation</strong>.)
+						This lets a <strong>managing app</strong> make rules like “only my own app may read this”.
+					</p>
+				</dd>
+			</dl>
+		</section>
+		<section>
+			<h1>What Comes Out</h1>
+			<p>
+				2 answers — <code>read</code> and <code>write</code>.
+				They are independent of each other.
+				The proposal says:
+			</p>
+			<blockquote>
+				<p>
+					The app answers <code>read</code> and <code>write</code> access as independent values which allows the expression of mixed arrangements, such as a paid newsletter that subscribers may read but only the authority writes to.
+				</p>
+			</blockquote>
+			<p>
+				For example, for a paid newsletter, a subscriber might get:
+			</p>
+			<figure>
+				<pre>
+{
+  "read": true,
+  "write": false
+}
+				</pre>
+			</figure>
+		</section>
+		<section>
+			<h1>Who May Ask</h1>
+			<p>
+				<code>checkAccess</code> is called with <strong>service auth</strong> <em>from the space authority</em>.
+				Service auth is a short-lived <abbr title="JSON Web Token">JWT</abbr>, sent in the <code>Authorization: Bearer</code> header, with (among other things):
+			</p>
+			<dl>
+				<dt><code>iss</code></dt>
+				<dd>
+					<p>
+						who is asking — here, the <strong>space authority</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+						The token is signed with the <strong>space authority</strong>'s <code>#atproto</code> key.
+					</p>
+				</dd>
+
+				<dt><code>aud</code></dt>
+				<dd>
+					<p>
+						who it is for — the <strong>managing app</strong>.
+					</p>
+				</dd>
+
+				<dt><code>lxm</code></dt>
+				<dd>
+					<p>
+						which end-point it may be used for — <code>checkAccess</code>.
+					</p>
+				</dd>
+
+				<dt><code>exp</code></dt>
+				<dd>
+					<p>
+						when it expires.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				So, a <strong>managing app</strong> checks the token by resolving the <code>iss</code> <strong><abbr title="decentralized identifier">DID</abbr></strong>, getting its <code>#atproto</code> public-key, and verifying the signature.
+			</p>
+			<p>
+				One more check is worth doing.
+				The <strong>space authority</strong> is the <strong><abbr title="decentralized identifier">DID</abbr></strong> at the start of the <strong>space</strong>'s <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>.
+				So, the <code>iss</code> should match it.
+				Otherwise, any account could ask about anyone else's <strong>space</strong> — and learn who has access to it.
+				(This check is not spelled out in the proposal.
+				But, the proposal does say the service auth comes <em>from the space authority</em>.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>When the Space Host Asks</h1>
+		<p>
+			The <strong>space host</strong> needs an access decision at 2 times — when someone wants to <em>read</em>, and when someone has <em>written</em>.
+		</p>
+		<section>
+			<h1>Reads: Issuing a Space Credential</h1>
+			<p>
+				To read a <strong>space</strong>, an application (a <strong><a href="../syncer/">syncer</a></strong>) calls <code>com.atproto.space.authorizeSpaceSync</code> on the <strong>space host</strong>, to get a <strong>space credential</strong>.
+				It includes a <strong>delegation token</strong> (which identifies the <em>user</em> it is acting for), and maybe a <strong>client attestation</strong> (which identifies the <em>application</em>).
+			</p>
+			<figure>
+				<pre>
+┌────────┐  1. authorizeSpaceSync  ┌────────────┐  2. checkAccess   ┌──────────────┐
+│        │ ──────────────────────► │            │ ────────────────► │              │
+│ syncer │   (delegation token,    │ space host │   (space, repo,   │ managing app │
+│        │    client attestation)  │            │    client)        │              │
+│        │                         │            │                   │              │
+│        │ ◄────────────────────── │            │ ◄──────────────── │              │
+└────────┘  4. space credential    └────────────┘  3. read: true    └──────────────┘
+               (or an error)
+				</pre>
+			</figure>
+			<p>
+				If the <strong>managing app</strong> answers <code>read: true</code>, the <strong>space host</strong> issues a <strong>space credential</strong>.
+				If not, it does not.
+			</p>
+		</section>
+		<section>
+			<h1>Writes: Tracking a Writer</h1>
+			<p>
+				When a user writes a record to a <strong>space</strong>, the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> (the <strong><a href="../repo-host/">repo host</a></strong>) calls <code>com.atproto.space.notifyRepoUpdate</code> on the <strong>space host</strong>.
+				The <strong>space host</strong> should reject it if the account is not allowed to write.
+			</p>
+			<figure>
+				<pre>
+┌───────────┐  1. notifyRepoUpdate  ┌────────────┐  2. checkAccess   ┌──────────────┐
+│           │ ────────────────────► │            │ ────────────────► │              │
+│ repo host │                       │ space host │   (space, repo)   │ managing app │
+│           │                       │            │                   │              │
+│           │                       │            │ ◄──────────────── │              │
+└───────────┘                       └────────────┘  3. write: true   └──────────────┘
+				</pre>
+			</figure>
+			<p>
+				Notice there is no <em>client</em> here.
+				The proposal says:
+			</p>
+			<blockquote>
+				<p>
+					A check prompted by a write passes no client, since <code>notifyRepoUpdate</code> does not identify the originating app.
+				</p>
+			</blockquote>
+			<p>
+				If the <strong>managing app</strong> answers <code>write: true</code>, the <strong>space host</strong> adds the account to the <strong>writer set</strong>, and notifies <strong>syncers</strong>.
+				If not, the write is <em>not</em> tracked — so <strong>syncers</strong> will not find out about it.
+			</p>
+			<p>
+				(Note that answering <code>write: false</code> does not stop someone from putting records in their <em>own</em> <strong>space repo</strong>.
+				It just means the <strong>space</strong> does not count them.
+				The proposal says write access “does not prevent an account from writing records into its own space repo”.)
+			</p>
+		</section>
+		<section>
+			<h1>Never: the Space Authority Itself</h1>
+			<p>
+				The <strong>space authority</strong> is never asked about.
+				The proposal says:
+			</p>
+			<blockquote>
+				<p>
+					Under every policy, the space authority's own account is always authorized as a user, for both reading and writing, without appearing on a member list or being approved by a managing app.
+				</p>
+			</blockquote>
+			<p>
+				So, the owner of a <strong>managed space</strong> cannot be locked out of it by its own <strong>managing app</strong>.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Taking Access Away</h1>
+		<p>
+			Suppose a subscriber stops paying.
+			What happens?
+		</p>
+		<p>
+			The <strong>managing app</strong> just starts answering <code>read: false</code>.
+			But, it only gets asked when the <strong>space host</strong> needs to know.
+			So:
+		</p>
+		<dl>
+			<dt>reads</dt>
+			<dd>
+				<p>
+					A <strong>space credential</strong> that was already issued stays valid until it expires — 10 minutes by default (and at most 60 minutes).
+					After that, the next <code>authorizeSpaceSync</code> gets a no.
+					(If that is not fast enough, the <strong>space host</strong> may also revoke credentials early with <code>com.atproto.space.notifyCredentialsRevoked</code>.)
+				</p>
+			</dd>
+
+			<dt>writes</dt>
+			<dd>
+				<p>
+					An account that is already in the <strong>writer set</strong> is <em>not</em> removed just because the <strong>managing app</strong> changed its mind.
+					The proposal says:
+				</p>
+				<blockquote>
+					<p>
+						Writers approved by the managing app can be explicitly removed from the writer set with <code>com.atproto.space.removeWriter</code>.
+					</p>
+				</blockquote>
+				<p>
+					And, <code>removeWriter</code> is called on the <strong>space host</strong> by an app acting for the <strong>space authority</strong>, with an OAuth scope that has <code>manage=update</code>.
+					So, whatever runs the rule also needs a way to have that called.
+				</p>
+			</dd>
+		</dl>
+	</section>
+	<section>
+		<h1>What a Managing App Does Not Do</h1>
+		<p>
+			A <strong>managing app</strong> decides who may <em>sync</em> the <strong>space</strong>, and whose writes count.
+			It does <em>not</em> decide what each application shows to each of <em>its</em> users.
+		</p>
+		<p>
+			An application that syncs a <strong>space</strong> might serve many users.
+			It has to decide, by itself, which of them may see the <strong>space</strong>.
+			The proposal gives exactly this example:
+		</p>
+		<blockquote>
+			<p>
+				Or a space may grant access to accounts that the space authority follows which requires gating actual space access via a <code>managedspace</code>. In either case, the syncing application is responsible for understanding and enforcing this application semantic in the views that it serves.
+			</p>
+		</blockquote>
+		<p>
+			So, a follower-gated <strong>space</strong> needs the rule to be enforced in 2 places — by the <strong>managing app</strong> (for the <strong>space host</strong>), and by every application that shows the <strong>space</strong> (for its own users).
+			(This is one reason to set <code>publishPolicy</code> — so applications can see which <strong>managing app</strong>, and so which rule, a <strong>space</strong> uses.)
+		</p>
+	</section>
+	<section>
+		<h1>What the Proposal Leaves Open</h1>
+		<p>
+			The proposal describes the <strong>managing app</strong> in only a few sentences.
+			But, the proposal also points to <em>draft</em> lexicons, on an implementation branch — <a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (open, not merged, at the time of writing).
+			The draft lexicon for <code>checkAccess</code> fills in some of the gaps:
+		</p>
+		<ul>
+			<li>
+				<strong>the full <abbr title="Namespaced Identifier">NSID</abbr></strong> is <code>com.atproto.managedspace.checkAccess</code>.
+				(The proposal only says <code>checkAccess</code>.)
+			</li>
+			<li>
+				<strong>the parameters</strong> are <code>space</code> (a <strong>space</strong> <abbr title="Uniform Resource Identifier">URI</abbr>, required), <code>repo</code> (a <strong><abbr title="decentralized identifier">DID</abbr></strong>, optional), and <code>clientId</code> (the OAuth client ID “of the requesting app, if attested”).
+			</li>
+			<li>
+				<strong>the response</strong> is <code>{"read": …, "write": …}</code> — 2 required booleans.
+			</li>
+		</ul>
+		<p>
+			Its description says: “Check an account's read and write access to a managed space. Called by the space host, implemented by the space's managing app. Requires service auth.”
+		</p>
+		<p>
+			These details are still not specified, by either the proposal or the draft lexicons:
+		</p>
+		<ul>
+			<li>
+				<strong>the service <code>id</code> and <code>type</code> in the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.</strong>
+				This article uses <code>#managing_app</code> and <code>ManagingApp</code>.
+			</li>
+			<li>
+				<strong>whether the <code>aud</code> includes the <code>#serviceId</code>.</strong>
+				The example code below accepts both.
+			</li>
+			<li>
+				<strong>caching, timeouts, and what happens when the managing app is down.</strong>
+				The proposal does not say whether a <strong>space host</strong> may remember an answer, or what to do if the <strong>managing app</strong> does not respond.
+			</li>
+		</ul>
+		<p>
+			And, since the lexicons are drafts, expect all of this to change.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a minimal <strong>managing app</strong> in Go.
+			It answers for one <strong>space</strong> — Alice's paid newsletter.
+			Subscribers may read.
+			Nobody else may write.
+			(Alice, as the <strong>space authority</strong>, is never asked about.)
+		</p>
+		<p>
+			It uses the <a href="https://github.com/bluesky-social/indigo">indigo</a> library to check the service auth token.
+			(indigo's <code>ServiceAuthValidator</code> resolves the <code>iss</code> <strong><abbr title="decentralized identifier">DID</abbr></strong>, gets its <code>#atproto</code> key, and checks the signature, <code>aud</code>, <code>lxm</code>, and <code>exp</code>.)
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"strings"
+
+	"github.com/bluesky-social/indigo/atproto/auth"
+	"github.com/bluesky-social/indigo/atproto/identity"
+	"github.com/bluesky-social/indigo/atproto/syntax"
+)
+
+const (
+	hostname  = "access.example.com"
+	did       = "did:web:" + hostname
+	serviceID = "managing_app"
+	method    = "com.atproto.managedspace.checkAccess"
+)
+
+// The space this managing app answers for: Alice's paid newsletter.
+const newsletter = "at://did:example:alice/space/com.example.newsletter/weekly"
+
+// Who has paid.
+var subscribers = map[string]bool{
+	"did:example:bob": true,
+}
+
+var directory identity.Directory = identity.DefaultDirectory()
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(value)
+}
+
+func writeError(w http.ResponseWriter, status int, name string, message string) {
+	writeJSON(w, status, map[string]string{"error": name, "message": message})
+}
+
+func didDocument(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"@context": []string{"https://www.w3.org/ns/did/v1"},
+		"id":       did,
+		"service": []map[string]string{
+			{
+				"id":              "#" + serviceID,
+				"type":            "ManagingApp",
+				"serviceEndpoint": "https://" + hostname,
+			},
+		},
+	})
+}
+
+// The space authority is the DID at the start of the space's at:// URI.
+func spaceAuthority(space string) string {
+	rest, found := strings.CutPrefix(space, "at://")
+	if !found {
+		return ""
+	}
+	authority, _, _ := strings.Cut(rest, "/")
+	return authority
+}
+
+func checkAccess(w http.ResponseWriter, r *http.Request) {
+	space := r.URL.Query().Get("space")
+	repo := r.URL.Query().Get("repo")
+
+	// Who is asking? It must be service auth.
+	token, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !found {
+		writeError(w, http.StatusUnauthorized, "AuthMissing", "service auth required")
+		return
+	}
+	lxm := syntax.NSID(method)
+	var issuer syntax.DID
+	var err error
+	for _, audience := range []string{did + "#" + serviceID, did} {
+		validator := auth.ServiceAuthValidator{Audience: audience, Dir: directory}
+		issuer, err = validator.Validate(r.Context(), token, &amp;lxm)
+		if nil == err {
+			break
+		}
+	}
+	if nil != err {
+		writeError(w, http.StatusUnauthorized, "InvalidToken", err.Error())
+		return
+	}
+
+	// Only the space's own authority may ask about the space.
+	if spaceAuthority(space) != issuer.String() {
+		writeError(w, http.StatusForbidden, "Forbidden", "not the space authority")
+		return
+	}
+
+	// The rule: subscribers may read; nobody else may write.
+	// (The space authority itself is never asked about.)
+	read := newsletter == space &amp;&amp; subscribers[repo]
+	writeJSON(w, http.StatusOK, map[string]bool{"read": read, "write": false})
+}
+
+func main() {
+	http.HandleFunc("/.well-known/did.json", didDocument)
+	http.HandleFunc("/xrpc/"+method, checkAccess)
+	log.Fatal(http.ListenAndServe(":3000", nil))
+}</code>
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				It serves its own <strong><abbr title="decentralized identifier">DID</abbr> document</strong> at <code>/.well-known/did.json</code>, so <code>did:web:access.example.com#managing_app</code> resolves to it.
+				(In real use it must be reachable over <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> at that hostname.)
+			</li>
+			<li>
+				It refuses requests without a valid service auth token (<code>401</code>), and requests from anyone other than the <strong>space</strong>'s own <strong>space authority</strong> (<code>403</code>).
+			</li>
+			<li>
+				It ignores <code>client</code>.
+				A real <strong>managing app</strong> could use it to only allow reading through particular applications.
+			</li>
+			<li>
+				It does not check <code>jti</code> for replays, and keeps its subscriber list in memory.
+				A real one would check against a payment system (or a follow graph, etc).
+			</li>
+			<li>
+				The <abbr title="Namespaced Identifier">NSID</abbr>, the <code>space</code> and <code>repo</code> parameters, and the response format match the draft lexicon.
+				(It ignores <code>clientId</code>.)
+				The service <code>id</code>/<code>type</code> are this article's guesses.
+				(See “What the Proposal Leaves Open”, above.)
+			</li>
+		</ul>
+		<p>
+			Since there is no <strong>space host</strong> that supports <code>managedspace</code> to test against (yet), this code was tested with Go's <code>httptest</code>, using service auth tokens signed with test keys.
+			Signed by Alice and asking about Bob, it answered <code>{"read":true,"write":false}</code>.
+			Asking about Carol, it answered <code>{"read":false,"write":false}</code>.
+			Tokens signed by another account, forged tokens, and tokens with the wrong <code>aud</code> or <code>lxm</code> were all refused.
+		</p>
+	</section>
+	<section>
+		<h1>XRPC API End-Points</h1>
+		<p>
+			(For <em>all</em> the <code>com.atproto.space</code> end-points, see: <a href="../../space/xrpc/"><abbr title="AT-Protocol">ATProto</abbr> Spaces XRPC API End-Points</a>.)
+		</p>
+		<p>
+			End-points that a <strong>managing app</strong> implements:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Called By</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>checkAccess</code></td>
+						<td>the space host (with service auth from the space authority)</td>
+						<td>answer whether an account may read, and whether it may write, the <strong>space</strong></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			Related end-points, on the <strong>space authority</strong>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong>, that set up and maintain a <strong>managed space</strong>:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>OAuth Scope</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.space.createSpace</code></td>
+						<td><code>manage=create</code></td>
+						<td>create a <strong>space</strong> with a <code>managedspace</code> <strong>policy</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.updateSpace</code></td>
+						<td><code>manage=update</code></td>
+						<td>replace the <strong>policy</strong> (for example, to change the <code>managingApp</code>)</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.removeWriter</code></td>
+						<td><code>manage=update</code></td>
+						<td>remove an account from the <strong>writer set</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.space.getSpace</code></td>
+						<td><code>read_self</code></td>
+						<td>describe the <strong>space</strong> and its current <strong>policy</strong></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>managing app</strong>:
+		</p>
+		<ol>
+			<li>only exists for <strong>spaces</strong> with the <code>com.atproto.managedspace.policy</code> <strong>policy</strong>,</li>
+			<li>is named in that <strong>policy</strong>'s <code>managingApp</code> field, as a <code>did#serviceId</code> reference,</li>
+			<li>implements one end-point, <code>checkAccess</code>, which answers <code>read</code> and <code>write</code> for one account,</li>
+			<li>is only ever called by the <strong>space host</strong>, with service auth from the <strong>space authority</strong> — when issuing a <strong>space credential</strong>, and when tracking a write,</li>
+			<li>is never asked about the <strong>space authority</strong> itself, and</li>
+			<li>never stores or hands out records.</li>
+		</ol>
+		<p>
+			Again, this is all a <em>proposal</em>.
+			Details are likely to change.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026) — especially the “Space policy”, “Baseline policies”, “<code>managedspace</code>”, “Access control”, “Write notifications”, “OAuth scopes”, and “Access control in applications” sections</li>
+			<li><a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (“Atproto spaces”) — draft lexicons, as of commit <code>9ded207</code> (November 20th, 2026): <code>com.atproto.managedspace.checkAccess</code> and <code>com.atproto.managedspace.policy</code></li>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a> — Inter-Service Authentication (<abbr title="JSON Web Token">JWT</abbr>)</li>
+			<li><a href="https://github.com/bluesky-social/indigo">indigo</a> — <code>atproto/auth</code> (<code>ServiceAuthValidator</code>, <code>SignServiceAuth</code>) and <code>atproto/identity</code></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
