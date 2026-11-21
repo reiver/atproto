@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Labeler: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="label" />
+<meta name="category" content="labeler" />
+<meta name="category" content="labels" />
+<meta name="category" content="moderation" />
+<meta name="category" content="open social web" />
+<meta name="category" content="ozone" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Labeler</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Labeler</h1>
+			<p>
+				the service that publishes signed labels about accounts and content
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>labeler</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>service</strong> that publishes <strong>labels</strong> — small, signed statements about an account or a piece of content.
+		For example: “this post is spam”, or “this image is graphic”, or “this account is a bot”.
+	</p>
+	<p>
+		<strong>Labels</strong> are how moderation works in <strong><abbr title="AT-Protocol">ATProto</abbr></strong>.
+		The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> moderation guide says:
+	</p>
+	<blockquote>
+		<p>
+			Atproto moderation is implemented using Labels.
+		</p>
+	</blockquote>
+	<p>
+		<mark>A <strong>labeler</strong> does <em>not</em> remove or hide anything by itself.
+		It only publishes <strong>labels</strong>.
+		It is up to <em>other</em> services (such as an <strong><a href="../appview/">AppView</a></strong>), applications, and users to decide what to <em>do</em> about a <strong>label</strong> — hide the content, blur it, show a warning, or ignore the <strong>label</strong> entirely.</mark>
+	</p>
+	<p>
+		And, there can be many <strong>labelers</strong>.
+		Anyone can run one.
+		Users and applications choose which <strong>labelers</strong> they want to listen to.
+	</p>
+	<section>
+		<h1>What a Label Looks Like</h1>
+		<p>
+			A <strong>label</strong> is a small data object.
+			The specification says:
+		</p>
+		<blockquote>
+			<p>
+				Labels primarily consist of a source (DID), a subject (URI), and value.
+			</p>
+		</blockquote>
+		<p>
+			For example, here is (roughly) what one looks like, written as <abbr title="JavaScript Object Notation">JSON</abbr>:
+		</p>
+		<figure>
+			<pre>
+{
+  "ver": 1,
+  "src": "did:plc:ar7c4by46qjdydhdevvrndac",
+  "uri": "at://did:plc:…/app.bsky.feed.post/3n2szuioedc2q",
+  "val": "porn",
+  "cts": "2026-11-21T…Z",
+  "sig": …
+}
+			</pre>
+		</figure>
+		<p>
+			(The subject's <strong><abbr title="decentralized identifier">DID</abbr></strong> and some values have been left out.)
+		</p>
+		<p>
+			The fields are:
+		</p>
+		<dl>
+			<dt><code>ver</code></dt>
+			<dd>
+				<p>
+					the label format version — currently always <code>1</code>.
+				</p>
+			</dd>
+
+			<dt><code>src</code></dt>
+			<dd>
+				<p>
+					the source — the <strong><abbr title="decentralized identifier">DID</abbr></strong> of the <strong>labeler</strong> that made the <strong>label</strong>.
+				</p>
+			</dd>
+
+			<dt><code>uri</code></dt>
+			<dd>
+				<p>
+					the subject — what the <strong>label</strong> is about.
+					An <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> for a record (such as a post), or a <code>did:</code> for a whole account.
+				</p>
+			</dd>
+
+			<dt><code>cid</code></dt>
+			<dd>
+				<p>
+					(optional) a particular <em>version</em> of the subject.
+				</p>
+			</dd>
+
+			<dt><code>val</code></dt>
+			<dd>
+				<p>
+					the value — what the <strong>label</strong> says, such as <code>spam</code> or <code>porn</code>.
+					At most 128 bytes.
+				</p>
+			</dd>
+
+			<dt><code>neg</code></dt>
+			<dd>
+				<p>
+					(optional) if <code>true</code>, this <strong>label</strong> <em>takes back</em> an earlier <strong>label</strong>.
+					(See “Taking a Label Back”, below.)
+				</p>
+			</dd>
+
+			<dt><code>cts</code></dt>
+			<dd>
+				<p>
+					when the <strong>label</strong> was created.
+				</p>
+			</dd>
+
+			<dt><code>exp</code></dt>
+			<dd>
+				<p>
+					(optional) when the <strong>label</strong> expires.
+				</p>
+			</dd>
+
+			<dt><code>sig</code></dt>
+			<dd>
+				<p>
+					the signature.
+					(See “Signatures”, below.)
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Notice that a <strong>label</strong> is <em>not</em> stored in the subject's <strong>repository</strong>.
+			The person being labeled does not have to agree to it — and cannot remove it.
+			A <strong>label</strong> is a statement <em>by the <strong>labeler</strong></em>, about someone else's content.
+		</p>
+	</section>
+	<section>
+		<h1>Label Values</h1>
+		<p>
+			The specification says very little about what <strong>label</strong> values <em>mean</em>.
+			It describes them as tokens, similar to hashtags — and recommends lower-case, kebab-case (<code>like-this</code>), using only ASCII letters.
+		</p>
+		<p>
+			Values that start with an exclamation mark (<code>!</code>) are, by convention, <em>system</em> values — they ask for a particular <em>behavior</em>, rather than describing the content.
+		</p>
+		<p>
+			The lexicon (<code>com.atproto.label.defs</code>) lists these known values:
+		</p>
+		<dl>
+			<dt><code>!hide</code></dt>
+			<dd>
+				<p>
+					hide the content.
+				</p>
+			</dd>
+
+			<dt><code>!warn</code></dt>
+			<dd>
+				<p>
+					show a warning.
+				</p>
+			</dd>
+
+			<dt><code>!no-unauthenticated</code></dt>
+			<dd>
+				<p>
+					do not show to people who are not logged in.
+				</p>
+			</dd>
+
+			<dt><code>porn</code>, <code>sexual</code>, <code>nudity</code>, <code>graphic-media</code></dt>
+			<dd>
+				<p>
+					adult and graphic content.
+				</p>
+			</dd>
+
+			<dt><code>bot</code></dt>
+			<dd>
+				<p>
+					an automated account.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			And, the specification gives 2 more special values — <code>!takedown</code> and <code>!suspend</code> — which a service can be asked to handle by removing the content entirely.
+			(See “How Labels Reach Users”, below.)
+		</p>
+		<p>
+			Beyond these, each <strong>labeler</strong> can define its own values — and describe them in its declaration record (see below).
+		</p>
+	</section>
+	<section>
+		<h1>Taking a Label Back</h1>
+		<p>
+			A <strong>label</strong> cannot be deleted.
+			Instead, to take one back, the <strong>labeler</strong> publishes a <em>new</em> <strong>label</strong>, with the same <code>src</code>, <code>uri</code>, and <code>val</code> — but with <code>neg</code> set to <code>true</code>, and a newer <code>cts</code>.
+			This is called a <strong>negation</strong>.
+		</p>
+		<figure>
+			<pre>
+{ "src": "did:plc:…labeler", "uri": "at://…/post/123", "val": "spam", "cts": "…10:00…" }
+{ "src": "did:plc:…labeler", "uri": "at://…/post/123", "val": "spam", "cts": "…11:00…", "neg": true }
+                                                                                        └────┬────┘
+                                                                                    “I take that back”
+			</pre>
+		</figure>
+		<p>
+			(Note that a negation does <em>not</em> mean the opposite is true.
+			It just means the <strong>labeler</strong> no longer makes that statement.)
+		</p>
+		<p>
+			A <strong>label</strong> can also have an expiration time (<code>exp</code>).
+			After that time, services should no longer show it.
+		</p>
+	</section>
+	<section>
+		<h1>Self-Labels</h1>
+		<p>
+			There is one kind of <strong>label</strong> that does not come from a <strong>labeler</strong>.
+		</p>
+		<p>
+			Some record types let the author put <strong>labels</strong> right inside the record itself — for example, so that someone posting an artistic nude can mark their own post as <code>nudity</code>.
+			These are called <strong>self-labels</strong>.
+			Their source is the author's own account, and they are proven by the <strong>repository</strong>'s own commit signature, rather than by a separate <code>sig</code>.
+		</p>
+	</section>
+	<section>
+		<h1>A Labeler's Identity</h1>
+		<p>
+			Every <strong>labeler</strong> is an account, with its own <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			That <strong><abbr title="decentralized identifier">DID</abbr></strong> is what appears in the <code>src</code> field of its <strong>labels</strong>.
+		</p>
+		<p>
+			A <strong>labeler</strong>'s <strong><abbr title="decentralized identifier">DID</abbr> document</strong> has 2 extra things in it:
+		</p>
+		<dl>
+			<dt>a <code>#atproto_labeler</code> service</dt>
+			<dd>
+				<p>
+					with the type <code>AtprotoLabeler</code>, saying where the <strong>labeler</strong>'s server is.
+				</p>
+			</dd>
+
+			<dt>a <code>#atproto_label</code> key</dt>
+			<dd>
+				<p>
+					the public-key used to check the <strong>labeler</strong>'s signatures.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			For example, here is Bluesky's moderation <strong>labeler</strong> (<code>moderation.bsky.app</code>):
+		</p>
+		<figure>
+			<pre>
+$ curl https://plc.directory/did:plc:ar7c4by46qjdydhdevvrndac
+{
+  "id": "did:plc:ar7c4by46qjdydhdevvrndac",
+  "alsoKnownAs": [
+    "at://moderation.bsky.app"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:plc:ar7c4by46qjdydhdevvrndac#atproto",
+      ...
+    },
+    {
+      "id": "did:plc:ar7c4by46qjdydhdevvrndac#atproto_label",
+      "type": "Multikey",
+      "publicKeyMultibase": "zQ3shmV1BNcX17coaDbfen6zArEad6SCLT3jVWCbC6Y9iinTa",
+      ...
+    }
+  ],
+  "service": [
+    {
+      "id": "#atproto_pds",
+      "type": "AtprotoPersonalDataServer",
+      "serviceEndpoint": "https://inkcap.us-east.host.bsky.network"
+    },
+    {
+      "id": "#atproto_labeler",
+      "type": "AtprotoLabeler",
+      "serviceEndpoint": "https://mod.bsky.app"
+    }
+  ]
+}
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed and reformatted, to make it easier to read.)
+		</p>
+		<p>
+			Notice that the <strong>labeler</strong> also has an ordinary <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			That is where its declaration record lives.
+		</p>
+		<section>
+			<h1>The Declaration Record</h1>
+			<p>
+				A <strong>labeler</strong> can describe itself with a declaration record in its own <strong>repository</strong>.
+				The specification says this is not required at the base <strong><abbr title="AT-Protocol">ATProto</abbr></strong> level, but may be required by particular applications.
+				For Bluesky, it is an <code>app.bsky.labeler.service</code> record, with the record-key <code>self</code>.
+			</p>
+			<p>
+				Among other things, it lists the <strong>label</strong> values the <strong>labeler</strong> uses, and describes each one:
+			</p>
+			<figure>
+				<pre>
+$ curl 'https://inkcap.us-east.host.bsky.network/xrpc/com.atproto.repo.getRecord?repo=did:plc:ar7c4by46qjdydhdevvrndac&amp;collection=app.bsky.labeler.service&amp;rkey=self'
+{
+  "uri": "at://did:plc:ar7c4by46qjdydhdevvrndac/app.bsky.labeler.service/self",
+  "value": {
+    "$type": "app.bsky.labeler.service",
+    "policies": {
+      "labelValues": [ "!hide", "!warn", "porn", "sexual", "nudity", "graphic-media", "spam", "impersonation", ... ],
+      "labelValueDefinitions": [
+        {
+          "identifier": "spam",
+          "severity": "inform",
+          "blurs": "content",
+          "defaultSetting": "hide",
+          "adultOnly": false,
+          "locales": [
+            {
+              "lang": "en",
+              "name": "Spam",
+              "description": "Unwanted, repeated, or unrelated actions that bother users."
+            }
+          ]
+        },
+        ...
+      ]
+    },
+    ...
+  }
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been trimmed and reformatted, to make it easier to read.)
+			</p>
+			<p>
+				Each label value definition says:
+			</p>
+			<dl>
+				<dt><code>identifier</code></dt>
+				<dd>
+					<p>
+						the value itself (lower-case ASCII letters and <code>-</code> only).
+					</p>
+				</dd>
+
+				<dt><code>severity</code></dt>
+				<dd>
+					<p>
+						<code>inform</code> (neutral, informational), <code>alert</code> (negative, a warning), or <code>none</code> (show nothing).
+					</p>
+				</dd>
+
+				<dt><code>blurs</code></dt>
+				<dd>
+					<p>
+						<code>content</code> (hide all of it), <code>media</code> (hide just the images, video, and audio), or <code>none</code>.
+					</p>
+				</dd>
+
+				<dt><code>defaultSetting</code></dt>
+				<dd>
+					<p>
+						what to do by default — <code>ignore</code>, <code>warn</code>, or <code>hide</code>.
+					</p>
+				</dd>
+
+				<dt><code>adultOnly</code></dt>
+				<dd>
+					<p>
+						whether it is only for adult content.
+					</p>
+				</dd>
+
+				<dt><code>locales</code></dt>
+				<dd>
+					<p>
+						a human-readable name and description, in one or more languages.
+					</p>
+				</dd>
+			</dl>
+		</section>
+	</section>
+	<section>
+		<h1>Getting Labels From a Labeler</h1>
+		<p>
+			A <strong>labeler</strong> offers 2 <strong>XRPC</strong> API end-points, at its <code>#atproto_labeler</code> <code>serviceEndpoint</code>:
+		</p>
+		<dl>
+			<dt><code>com.atproto.label.subscribeLabels</code></dt>
+			<dd>
+				<p>
+					a WebSocket stream of new <strong>labels</strong> (and negations).
+					It works like the <strong><a href="../relay/">relay</a></strong> <strong>firehose</strong> — <strong><abbr title="Concise Binary Object Representation">CBOR</abbr></strong> frames, with <code>seq</code> numbers and a <code>cursor</code> parameter.
+					Each <code>#labels</code> message has a <code>seq</code> and a list of <code>labels</code>.
+					(Unlike the <strong>firehose</strong>, the specification says the backfill <em>may</em> go all the way back, with <code>cursor=0</code>.)
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.label.queryLabels</code></dt>
+			<dd>
+				<p>
+					find the <strong>labels</strong> for particular subjects.
+					The <code>uriPatterns</code> parameter takes one or more <abbr title="Uniform Resource Identifier">URI</abbr>s — or prefixes, ending with <code>*</code>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			For example:
+		</p>
+		<pre><code>
+wss://mod.bsky.app/xrpc/com.atproto.label.subscribeLabels
+		</code></pre>
+		<p>
+			(At the time of writing, <code>mod.bsky.app</code> answered a wildcard <code>queryLabels</code> request with: “Support for wildcard label queries is temporarily disabled”.)
+		</p>
+		<p>
+			A <strong>labeler</strong> does not <em>have</em> to make its <strong>labels</strong> public — or offer these end-points at all.
+		</p>
+	</section>
+	<section>
+		<h1>Signatures</h1>
+		<p>
+			Each <strong>label</strong> is signed by its <strong>labeler</strong>.
+			That way, a <strong>label</strong> can be passed from service to service, and anyone can still check that it really came from the <strong>labeler</strong> in its <code>src</code>.
+		</p>
+		<p>
+			To check a <strong>label</strong>'s signature:
+		</p>
+		<ol>
+			<li>take the <strong>label</strong>, <em>without</em> its <code>sig</code> field (but <em>with</em> its <code>ver</code> field),</li>
+			<li>encode it as deterministic <strong><abbr title="Concise Binary Object Representation">CBOR</abbr></strong> (following the <strong>DRISL</strong> rules),</li>
+			<li>hash those bytes with <strong>SHA-256</strong>, and</li>
+			<li>check the signature of that hash, using the <code>#atproto_label</code> key from the <strong>labeler</strong>'s <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.</li>
+		</ol>
+		<p>
+			A few rules:
+		</p>
+		<ul>
+			<li>
+				If there is no <code>#atproto_label</code> key, do <em>not</em> try other keys.
+				Treat the signature as invalid, and ignore the <strong>label</strong>.
+			</li>
+			<li>
+				If a signature does not check out, re-resolve the <strong>labeler</strong>'s <strong><abbr title="decentralized identifier">DID</abbr> document</strong> — its key may have changed.
+			</li>
+			<li>
+				Signatures are meant to be checked when one <em>service</em> receives <strong>labels</strong> from another.
+				The specification assumes most end-user applications will not check them.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is an example, in the Go programming-language, of reading <strong>labels</strong> from Bluesky's moderation <strong>labeler</strong>, and checking each one's signature.
+			It uses <code>github.com/gorilla/websocket</code> for the WebSocket, <code>github.com/fxamacker/cbor/v2</code> for <strong><abbr title="Concise Binary Object Representation">CBOR</abbr></strong>, and <code>github.com/bluesky-social/indigo/atproto/atcrypto</code> for the cryptography.
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/bluesky-social/indigo/atproto/atcrypto"
+	"github.com/fxamacker/cbor/v2"
+	"github.com/gorilla/websocket"
+)
+
+// header is the first CBOR object in each WebSocket frame.
+type header struct {
+	Op   int    `cbor:"op"`
+	Type string `cbor:"t"`
+}
+
+// label is an ATProto label.
+type label struct {
+	Ver int64  `cbor:"ver"`
+	Src string `cbor:"src"`
+	URI string `cbor:"uri"`
+	CID string `cbor:"cid,omitempty"`
+	Val string `cbor:"val"`
+	Neg bool   `cbor:"neg,omitempty"`
+	Cts string `cbor:"cts"`
+	Exp string `cbor:"exp,omitempty"`
+	Sig []byte `cbor:"sig,omitempty"`
+}
+
+// labelsMessage is a #labels message.
+type labelsMessage struct {
+	Seq    int64   `cbor:"seq"`
+	Labels []label `cbor:"labels"`
+}
+
+// verify checks a label's signature, using the labeler's #atproto_label public key.
+func verify(l label, publicKey atcrypto.PublicKey) error {
+	// The signature is over the label without its "sig" field...
+	unsigned := l
+	unsigned.Sig = nil
+
+	// ...encoded as deterministic CBOR (map keys sorted length-first, as DRISL requires).
+	encoder, err := cbor.EncOptions{Sort: cbor.SortLengthFirst}.EncMode()
+	if nil != err {
+		return err
+	}
+	encoded, err := encoder.Marshal(unsigned)
+	if nil != err {
+		return err
+	}
+
+	// HashAndVerify does the SHA-256 hashing.
+	return publicKey.HashAndVerify(encoded, l.Sig)
+}
+
+func main() {
+	// Bluesky's moderation labeler.
+	const url = "wss://mod.bsky.app/xrpc/com.atproto.label.subscribeLabels"
+
+	// The #atproto_label key, from did:plc:ar7c4by46qjdydhdevvrndac's DID document.
+	const labelKey = "zQ3shmV1BNcX17coaDbfen6zArEad6SCLT3jVWCbC6Y9iinTa"
+
+	publicKey, err := atcrypto.ParsePublicMultibase(labelKey)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, "ERROR:", err)
+		os.Exit(1)
+	}
+
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, "ERROR:", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	count := 0
+	for count &lt; 5 {
+		conn.SetReadDeadline(time.Now().Add(2 * time.Minute))
+		_, frame, err := conn.ReadMessage()
+		if nil != err {
+			fmt.Fprintln(os.Stderr, "ERROR:", err)
+			os.Exit(1)
+		}
+
+		// Each frame is 2 CBOR objects, one after the other: a header, then the message.
+		decoder := cbor.NewDecoder(bytes.NewReader(frame))
+
+		var h header
+		err = decoder.Decode(&amp;h)
+		if nil != err || 1 != h.Op || "#labels" != h.Type {
+			continue
+		}
+
+		var message labelsMessage
+		err = decoder.Decode(&amp;message)
+		if nil != err {
+			fmt.Fprintln(os.Stderr, "ERROR:", err)
+			continue
+		}
+
+		for _, l := range message.Labels {
+			result := "signature OK"
+			err := verify(l, publicKey)
+			if nil != err {
+				result = "signature INVALID: " + err.Error()
+			}
+
+			negated := ""
+			if l.Neg {
+				negated = " (negation)"
+			}
+			fmt.Printf("%d %s%s %s — %s\n", message.Seq, l.Val, negated, l.URI, result)
+			count++
+		}
+	}
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it gave:
+		</p>
+		<figure>
+			<pre>
+$ go run .
+46390441 porn at://did:plc:…/app.bsky.feed.post/3n2szuioedc2q — signature OK
+46390442 porn at://did:plc:…/app.bsky.feed.post/3n2szumtm5h2h — signature OK
+46390443 sexual at://did:plc:…/app.bsky.feed.post/3n2szumtm5h2h — signature OK
+46390444 porn at://did:plc:…/app.bsky.feed.post/3n2s2yecens2f — signature OK
+46390445 sexual at://did:plc:…/app.bsky.feed.post/3n2szumvscv2q — signature OK
+			</pre>
+		</figure>
+		<p>
+			(The labeled accounts' <strong><abbr title="decentralized identifier">DID</abbr>s</strong> have been left out.)
+		</p>
+		<p>
+			(To check that the verification really works, the same code was also run with each <strong>label</strong>'s <code>val</code> changed after it was received.
+			Every changed <strong>label</strong> failed verification, as it should.)
+		</p>
+		<p>
+			(To keep it short, this example hard-codes the <code>#atproto_label</code> key.
+			A real program should get it from the <strong>labeler</strong>'s <strong><abbr title="decentralized identifier">DID</abbr> document</strong> — see: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+		</p>
+	</section>
+	<section>
+		<h1>How Labels Reach Users</h1>
+		<p>
+			Most applications do not read <strong>labels</strong> from <strong>labelers</strong> directly.
+			Instead, an <strong><a href="../appview/">AppView</a></strong> collects <strong>labels</strong> from the <strong>labelers</strong>, and includes the relevant ones in its responses.
+			(The specification calls this <em>hydrating</em> the <strong>labels</strong>.)
+		</p>
+		<figure>
+			<pre>
+┌────────────┐  labels  ┌─────────┐  posts + labels  ┌─────┐
+│ labeler A  │ ───────► │         │ ───────────────► │ app │ ──► hide? blur? warn? ignore?
+├────────────┤          │ AppView │                  └─────┘
+│ labeler B  │ ───────► │         │
+└────────────┘          └─────────┘
+			</pre>
+		</figure>
+		<p>
+			An application says which <strong>labelers</strong> it wants, with the <code>atproto-accept-labelers</code> <abbr title="HyperText Transfer Protocol">HTTP</abbr> header — a comma-separated list of <strong>labeler</strong> <strong><abbr title="decentralized identifier">DID</abbr>s</strong>:
+		</p>
+		<figure>
+			<pre>
+atproto-accept-labelers: did:web:mod.example.com;redact, did:plc:abc123, did:plc:xyz789
+			</pre>
+		</figure>
+		<p>
+			(That example is from the specification.)
+		</p>
+		<ul>
+			<li>
+				The optional <code>;redact</code> parameter means: for this <strong>labeler</strong>'s <code>!takedown</code> and <code>!suspend</code> <strong>labels</strong>, remove the content from the response entirely, rather than just labeling it.
+			</li>
+			<li>
+				If the header is left out, the service may use its own default <strong>labelers</strong>.
+				If the header is present but empty, the service should apply no <strong>labels</strong> at all.
+			</li>
+			<li>
+				The response's <code>atproto-content-labelers</code> header says which <strong>labelers</strong> the service was actually able to use.
+			</li>
+		</ul>
+		<p>
+			Then, the application decides what to do with each <strong>label</strong> — using the <strong>labeler</strong>'s label value definitions (<code>severity</code>, <code>blurs</code>, <code>defaultSetting</code>), and the user's own settings.
+		</p>
+		<p>
+			Since users can listen to more than one <strong>labeler</strong>, moderation can be <em>layered</em> — a user might use Bluesky's <strong>labeler</strong>, plus a community's <strong>labeler</strong>, plus one that marks spoilers for their favorite TV show.
+			This fits <strong><abbr title="AT-Protocol">ATProto</abbr></strong>'s idea that <em>speech</em> and <em>reach</em> are separate layers.
+		</p>
+	</section>
+	<section>
+		<h1>Labels and Spaces</h1>
+		<p>
+			<strong>Labels</strong>, as described above, are for <em>public</em> data.
+		</p>
+		<p>
+			The proposal for permissioned (private) data — <strong>spaces</strong> — handles <strong>labels</strong> differently.
+			A public <strong>label</strong> about private content would leak information about it.
+			So, in a <strong>space</strong>, a <strong>labeler</strong> instead writes its <strong>labels</strong> as records (of type <code>com.atproto.label.record</code>) <em>inside</em> the same <strong>space</strong>.
+			And, to read the <strong>space</strong> at all, a <strong>labeler</strong> must be let in, like any other <strong><a href="../syncer/">syncer</a></strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Running a Labeler</h1>
+		<p>
+			Bluesky's software for running a <strong>labeler</strong> is <a href="https://github.com/bluesky-social/ozone"><strong>Ozone</strong></a>.
+			Its README describes it as a “labeling service for Bluesky and other atproto apps” — with a web interface for reviewing reports, and creating labels, takedowns, and suspensions.
+			It can be self-hosted.
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>labeler</strong>:
+		</p>
+		<ol>
+			<li>publishes <strong>labels</strong> — signed statements (<code>src</code>, <code>uri</code>, <code>val</code>, …) about accounts and content,</li>
+			<li>does not hide or remove anything itself — <strong>AppViews</strong>, applications, and users decide what to do with <strong>labels</strong>,</li>
+			<li>is an account, with a <code>#atproto_labeler</code> service and a <code>#atproto_label</code> key in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>,</li>
+			<li>can describe its <strong>label</strong> values in a declaration record,</li>
+			<li>offers its <strong>labels</strong> through <code>subscribeLabels</code> and <code>queryLabels</code>, and</li>
+			<li>is one of many — users and applications choose which <strong>labelers</strong> to listen to.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/label">AT Protocol Specification: Labels</a></li>
+			<li><a href="https://atproto.com/guides/moderation">AT Protocol Guide: Moderation</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto/label"><code>com.atproto.label.*</code> lexicons</a> (<code>defs</code>, <code>subscribeLabels</code>, <code>queryLabels</code>)</li>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (for labels in spaces)</li>
+			<li><a href="https://github.com/bluesky-social/ozone">bluesky-social/ozone</a></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
