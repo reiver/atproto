@@ -123,11 +123,50 @@
 			<pre>
 $ curl 'https://blacksky.app/xrpc/com.atproto.repo.getRecord?repo=did:plc:scewmn2pl3oz36mxme2b6czz&amp;collection=app.bsky.actor.profile&amp;rkey=self'
 
-$type, avatar, banner, description, displayName, links, pinnedPost, pronouns
+{
+  "uri": "at://did:plc:scewmn2pl3oz36mxme2b6czz/app.bsky.actor.profile/self",
+  "cid": "bafyreifk5il5y5l6bx7ideippmxzmbukwuhzaya7ldh5cxp7vheoj2wcmm",
+  "value": {
+    "$type": "app.bsky.actor.profile",
+    "avatar": {
+      "$type": "blob",
+      "ref": {
+        "$link": "bafkreignawwvbuxhbymqpho4zwdw5zpult7cwa5w4lbfb6whsruwbf2wgu"
+      },
+      "mimeType": "image/jpeg",
+      "size": 69829
+    },
+    "banner": {
+      "$type": "blob",
+      "ref": {
+        "$link": "bafkreig53oqhwfy7xhx26bb7hlnoi2yeuoqor77b2vsx4hudzhyy2eq2ta"
+      },
+      "mimeType": "image/jpeg",
+      "size": 149165
+    },
+    "description": "Founding Engineer at @blackskyweb.xyz\n\nI like to understand things. I like to make things\n\nThe meaning of life — first survive, then reproduce 🌞\n\nDon't let the perfect be the enemy of the good (enough)\n\n📍 Vancouver\n\n🌐 https://reiver.link\n\n❤ Open Social Web",
+    "displayName": "@reiver ⊼ (Charles Iliya Krempeaux)",
+    "links": [
+      {
+        "cid": "bafyreih2qsw2poaptsmvxyan4pbllkwpl4rsm2oeoituot55u3jvvivrca",
+        "uri": "at://did:plc:scewmn2pl3oz36mxme2b6czz/app.bsky.actor.link/3n2jmr23fk46m"
+      },
+      {
+        "cid": "bafyreidyfbrqtht2clwlpe4kcstk4qbz37mpmhpugtf4az4cmr5czy6lmi",
+        "uri": "at://did:plc:scewmn2pl3oz36mxme2b6czz/app.bsky.actor.link/3n2jmr23kfp6k"
+      }
+    ],
+    "pinnedPost": {
+      "cid": "bafyreidvjp3ckteezrxx2syq7g6mkbzm7olfqzjnwnsceyxcn4yxw25xim",
+      "uri": "at://did:plc:scewmn2pl3oz36mxme2b6czz/app.bsky.feed.post/3mzni6jipa22t"
+    },
+    "pronouns": ""
+  }
+}
 			</pre>
 		</figure>
 		<p>
-			(The output has been reduced to just the field names, to make it easier to read.)
+			(The output has been pretty-printed, to make it easier to read.)
 		</p>
 		<p>
 			There is no follower count.
