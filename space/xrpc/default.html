@@ -40,7 +40,7 @@
 		</p>
 	</header>
 	<p>
-		<strong>Spaces</strong> are a proposed addition to the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) for <em>permissioned</em> data — records that only some people (and some applications) are allowed to read.
+		<strong><a href="../">Spaces</a></strong> are a proposed addition to the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) for <em>permissioned</em> data — records that only some people (and some applications) are allowed to read.
 		For example: a private forum, a paid newsletter, or a user's bookmarks.
 	</p>
 	<p>
@@ -80,9 +80,11 @@
 		</p>
 	</blockquote>
 	<p>
-		Also, there are no published <strong>lexicons</strong> for these end-points yet.
-		(For example, <code>lexicons/com/atproto/space/authorizeSpaceSync.json</code> does not exist in the <code>bluesky-social/atproto</code> repository, at the time of writing.)
-		So, this article gives each end-point's name, role, type, auth, and purpose — as the proposal describes them — but not every parameter.
+		The <strong>lexicons</strong> for these end-points are not in the main branch of the <code>bluesky-social/atproto</code> repository yet.
+		But, <em>draft</em> lexicons exist, on an implementation branch — <a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (open, not merged, at the time of writing).
+		The draft lexicons have all 28 end-points, with the same names and types as the proposal.
+		This article gives each end-point's name, role, type, auth, and purpose — as the proposal describes them — but not every parameter.
+		(For the parameters, see the draft lexicons.)
 	</p>
 	<p>
 		This article describes the proposal as of November 2026.
@@ -643,7 +645,7 @@ Signature: sig=:wNmSUA...:
 			</figure>
 			<p>
 				(The proposal gives <code>checkAccess</code> only as a short name.
-				By the convention above, it would be <code>com.atproto.managedspace.checkAccess</code>.)
+				The draft lexicons give its full name — <code>com.atproto.managedspace.checkAccess</code>.)
 			</p>
 		</section>
 	</section>
@@ -652,7 +654,7 @@ Signature: sig=:wNmSUA...:
 		<p>
 			There is no end-point in the list for <em>uploading</em> a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> (an image, video, etc) into a <strong>space</strong> — only <code>getBlob</code> and <code>listBlobs</code>, for reading them.
 			(For public data, <abbr title="AT-Protocol">ATProto</abbr> has <code>com.atproto.repo.uploadBlob</code>.)
-			The proposal does not say how a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> gets into a <strong>space repo</strong>.
+			The proposal does not say how a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> gets into a <strong>space repo</strong>, and the draft lexicons do not add a <code>com.atproto.space</code> end-point for it either.
 		</p>
 	</section>
 	<section>
@@ -663,7 +665,7 @@ Signature: sig=:wNmSUA...:
 			<li>A role is a kind of end-point, not a separate server — usually one <strong><abbr title="Personal Data Server">PDS</abbr></strong> implements 26 of them, and applications implement the 2 syncer end-points.</li>
 			<li>Read end-points accept OAuth or a <strong>space credential</strong>; write end-points accept only OAuth; server-to-server end-points use service auth or a token in the body.</li>
 			<li>Policy end-points (<code>com.atproto.memberspace.*</code>, and <code>checkAccess</code>) live outside <code>com.atproto.space</code>.</li>
-			<li>There are no published lexicons yet.</li>
+			<li>The lexicons are still drafts, on an unmerged pull request.</li>
 		</ol>
 		<p>
 			Again, this is all a <em>proposal</em>.
@@ -674,7 +676,8 @@ Signature: sig=:wNmSUA...:
 		<h1>Sources</h1>
 		<ul>
 			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026) — especially the “XRPC API”, “OAuth scopes”, “Access control”, “Space policy”, and “Baseline policies” sections</li>
-			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto">bluesky-social/atproto lexicons</a> — checked on November 21st, 2026; no <code>com/atproto/space/</code> lexicons yet</li>
+			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto">bluesky-social/atproto lexicons</a> — checked on November 21st, 2026; no <code>com/atproto/space/</code> lexicons in the main branch yet</li>
+			<li><a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (“Atproto spaces”) — draft lexicons, as of commit <code>9ded207</code> (November 20th, 2026)</li>
 			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a></li>
 		</ul>
 	</section>

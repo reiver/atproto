@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>AT-Protocol (ATProto): Spaces</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="access control" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="social web" />
+<meta name="category" content="space" />
+<meta name="category" content="spaces" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page">Spaces</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>) Spaces</h1>
+			<p>
+				permissioned data in <abbr title="AT-Protocol">ATProto</abbr>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		Most data in the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) is public.
+		Posts, likes, follows, profiles — anyone can read them.
+	</p>
+	<p>
+		<strong>Spaces</strong> are a proposed addition to <strong><abbr title="AT-Protocol">ATProto</abbr></strong> for data that is <em>not</em> public — data that only some people (and some applications) are allowed to read.
+		The proposal calls this <em>permissioned data</em>, and gives these examples:
+	</p>
+	<blockquote>
+		<ul>
+			<li><strong>Personal data</strong>: bookmarks, mutes, drafts</li>
+			<li><strong>Gated content</strong>: paid newsletters, subscriber-only posts</li>
+			<li><strong>Socially shared</strong>: private posts, stories</li>
+			<li><strong>Groups</strong>: private forums, communities, group chats</li>
+		</ul>
+	</blockquote>
+	<p>
+		<mark>A <strong>space</strong> is <em>not</em> a server, and it is <em>not</em> a place where the data is kept.
+		A <strong>space</strong> is a <em>boundary</em> — a group of records, and a rule about who may read them.
+		Each user's records stay on that user's <em>own</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.</mark>
+	</p>
+	<p>
+		The proposal says:
+	</p>
+	<blockquote>
+		<p>
+			A <strong>space</strong> is an authorization and sync boundary representing a shared social context. A space may include many different types of records from many users. The space does not colocate records on a single network host.
+		</p>
+	</blockquote>
+	<p>
+		<strong>Note!</strong>
+		At the time of writing, <strong>spaces</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		There are also <em>draft</em> lexicons, and a work-in-progress implementation, in <a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (open, not merged, at the time of writing).
+		This article describes the proposal as of November 2026.
+	</p>
+	<section>
+		<h1>Public Data versus Space Data</h1>
+		<p>
+			<strong>Spaces</strong> are shaped a lot like public <strong><abbr title="AT-Protocol">ATProto</abbr></strong> data.
+			Users still have their own repositories, records still have lexicon types, and applications still pull data from <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> to build their views.
+			But, many of the details are different.
+			The proposal compares them like this:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th></th>
+						<th>Public Broadcast</th>
+						<th>Atproto Spaces</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>Unit of data</td>
+						<td>Record in a repo</td>
+						<td>Record in a space repo</td>
+					</tr>
+					<tr>
+						<td>Repo scope</td>
+						<td>One repo per user</td>
+						<td>One space repo per (user, space)</td>
+					</tr>
+					<tr>
+						<td>Record authority</td>
+						<td>User <abbr title="decentralized identifier">DID</abbr></td>
+						<td>User <abbr title="decentralized identifier">DID</abbr></td>
+					</tr>
+					<tr>
+						<td><abbr title="Uniform Resource Identifier">URI</abbr> authority</td>
+						<td>User <abbr title="decentralized identifier">DID</abbr></td>
+						<td>Space authority <abbr title="decentralized identifier">DID</abbr></td>
+					</tr>
+					<tr>
+						<td>Commit</td>
+						<td>Merkle Search Tree root</td>
+						<td>LtHash set-hash digest</td>
+					</tr>
+					<tr>
+						<td>Commit authenticity</td>
+						<td>Signature</td>
+						<td><abbr title="Hash-based Message Authentication Code">HMAC</abbr></td>
+					</tr>
+					<tr>
+						<td>Addressing</td>
+						<td>Traditional <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr></td>
+						<td><code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> with <code>space</code> segment</td>
+					</tr>
+					<tr>
+						<td>Access</td>
+						<td>Public</td>
+						<td>Gated by space credential</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			And, there are no <strong><a href="../service/relay/">relays</a></strong> and no firehose for <strong>spaces</strong>.
+			Applications pull <strong>space</strong> data directly from each user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		</p>
+		<p>
+			The proposal sums up the difference this way:
+		</p>
+		<blockquote>
+			<p>
+				Public broadcast is built for open distribution (signed, archival, rebroadcastable) while atproto spaces are built for party-to-party transmission within an access boundary.
+			</p>
+		</blockquote>
+	</section>
+	<section>
+		<h1>Access Control, Not Secrecy</h1>
+		<p>
+			<strong>Spaces</strong> control <em>who may read</em> the data.
+			They do <em>not</em> encrypt it.
+			The servers that handle the data (<strong><abbr title="Personal Data Server">PDS</abbr>es</strong>, and the applications that are allowed in) can read it.
+			The proposal says:
+		</p>
+		<blockquote>
+			<p>
+				Atproto spaces provide <strong>access control, not confidentiality</strong>. They are not end-to-end encrypted.
+			</p>
+		</blockquote>
+		<p>
+			That is on purpose — it is what lets applications offer search, notifications, moderation, etc, on <strong>space</strong> data.
+			End-to-end encryption could be added on top, by an application, but it is not part of the proposal.
+		</p>
+	</section>
+	<section>
+		<h1>Naming a Space</h1>
+		<p>
+			A <strong>space</strong> is identified by 3 things:
+		</p>
+		<dl>
+			<dt>space authority</dt>
+			<dd>
+				<p>
+					a <strong><abbr title="decentralized identifier">DID</abbr></strong> — the root of authority for the <strong>space</strong>, which decides who may read it.
+					It might be a user's own <strong><abbr title="decentralized identifier">DID</abbr></strong> (for example, for their bookmarks), or a <strong><abbr title="decentralized identifier">DID</abbr></strong> made just for the <strong>space</strong> (for example, for a forum).
+				</p>
+			</dd>
+
+			<dt>space type</dt>
+			<dd>
+				<p>
+					an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> naming what kind of <strong>space</strong> it is — for example, <code>com.atmoboards.forum</code>.
+					It resolves to a <strong>space type declaration</strong> (a lexicon with <code>"type": "space"</code>), which lists the record collections to expect.
+					It is also what a user consents to, in OAuth — for example, “access to your AtmoBoards forums”.
+				</p>
+			</dd>
+
+			<dt>space key (<code>skey</code>)</dt>
+			<dd>
+				<p>
+					a string that tells apart <strong>spaces</strong> of the same type, under the same <strong>space authority</strong> — like a record key.
+					For example, <code>general</code>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Together, they make an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> with a <code>space</code> segment.
+			Adding the author, collection, and record key names a record in the <strong>space</strong>:
+		</p>
+		<figure>
+			<pre>
+at://{spaceDid}/space/{spaceType}/{skey}/{authorDid}/{collection}/{rkey}
+└──────────────────┬───────────────────┘ └──────────────┬──────────────┘
+                   │                                    │
+               the space                         a record in it
+			</pre>
+		</figure>
+		<p>
+			For example:
+		</p>
+		<figure>
+			<pre>
+at://did:example:forum/space/com.atmoboards.forum/general
+at://did:example:forum/space/com.atmoboards.forum/general/did:example:alice/com.atmoboards.thread/3mwcj3b6uak2f
+			</pre>
+		</figure>
+		<p>
+			(A public <abbr title="Uniform Resource Identifier">URI</abbr> has a collection <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> where this has <code>space</code>.
+			Since an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> always has dots in it, and <code>space</code> does not, the 2 kinds can never be confused.)
+		</p>
+	</section>
+	<section>
+		<h1>Who Is Involved</h1>
+		<p>
+			The proposal describes these roles:
+		</p>
+		<dl>
+			<dt><a href="../service/repo-host/">repo host</a></dt>
+			<dd>
+				<p>
+					stores and serves users' <strong>space repos</strong> (one user's records in one <strong>space</strong>).
+					Usually, the user's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+				</p>
+			</dd>
+
+			<dt><a href="../service/space-host/">space host</a></dt>
+			<dd>
+				<p>
+					answers for a <strong>space</strong> as a whole — it decides who may read (by issuing <strong>space credentials</strong>), keeps track of who has written (the <strong>writer set</strong>), and sends out notifications.
+					It never stores the records themselves.
+					Usually, the <strong>space authority</strong>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+				</p>
+			</dd>
+
+			<dt><a href="../service/syncer/">syncer</a></dt>
+			<dd>
+				<p>
+					an <em>application</em> that keeps its own copy of a <strong>space</strong>, by pulling from the <strong>repo hosts</strong> — for example, an <strong><a href="../service/appview/">AppView</a></strong> for a private forum.
+				</p>
+			</dd>
+
+			<dt><a href="../service/managing-app/">managing app</a></dt>
+			<dd>
+				<p>
+					an outside service that a <strong>space host</strong> can ask “may this account read, and may it write?” — for <strong>spaces</strong> whose rules are not a simple member list (for example, “paying subscribers only”).
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Notice that a <strong><abbr title="Personal Data Server">PDS</abbr></strong> usually plays 2 of these roles — <strong>repo host</strong> for its accounts, and <strong>space host</strong> for the <strong>spaces</strong> its accounts are the authority of.
+		</p>
+		<figure>
+			<pre>
+                         ┌──────────────┐
+                         │  space host  │
+                         └──────────────┘
+                           ▲          │
+       1. ask permission   │          │  3. "something changed"
+       2. ask who wrote    │          │     notifications
+                           │          ▼
+                         ┌──────────────┐
+                         │    syncer    │
+                         └──────────────┘
+                                │
+                 4. pull the    │
+                    records     │
+             ┌──────────────────┼──────────────────┐
+             ▼                  ▼                  ▼
+      ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+      │  repo host  │    │  repo host  │    │  repo host  │
+      │  (Alice)    │    │  (Bob)      │    │  (Carol)    │
+      └─────────────┘    └─────────────┘    └─────────────┘
+			</pre>
+		</figure>
+		<p>
+			(There is also the <strong><a href="../service/space-mirror/">space mirror</a></strong> — but that is <em>not</em> from the proposal.
+			It is a way of building an application: one internal <strong>syncer</strong> that serves its copy to the application's other services.)
+		</p>
+	</section>
+	<section>
+		<h1>How Reading a Space Works</h1>
+		<p>
+			In short:
+		</p>
+		<ol>
+			<li>A user authorizes an application, with an OAuth <code>space:</code> scope.</li>
+			<li>The application gets a <strong>delegation token</strong> from the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> (proof that the user authorized it).</li>
+			<li>The application gives that (and, maybe, a <strong>client attestation</strong> — proof of which application it is) to the <strong>space host</strong>, and asks for a <strong>space credential</strong>.</li>
+			<li>If the <strong>space</strong>'s rules allow it, the <strong>space host</strong> returns a short-lived <strong>space credential</strong> (10 minutes, by default).</li>
+			<li>The application asks the <strong>space host</strong> who has written to the <strong>space</strong>, then pulls each user's <strong>space repo</strong> from its <strong>repo host</strong>, using the <strong>space credential</strong>.</li>
+			<li>The application keeps its copy up-to-date, as the <strong>space host</strong> notifies it of changes.</li>
+		</ol>
+		<p>
+			(For the details, see: <a href="../service/syncer/"><abbr title="AT-Protocol">ATProto</abbr> Syncer</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Who May Read: Policies</h1>
+		<p>
+			The core protocol does not say how a <strong>space host</strong> decides who may read, or whose writes count.
+			Each <strong>space</strong> has a <strong>policy</strong> for that.
+			Every <strong><abbr title="Personal Data Server">PDS</abbr></strong> must support these 3:
+		</p>
+		<dl>
+			<dt><code>com.atproto.personalspace.policy</code></dt>
+			<dd>
+				<p>
+					only the <strong>space authority</strong>'s own account has access — for bookmarks, mutes, drafts, etc.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.memberspace.policy</code></dt>
+			<dd>
+				<p>
+					access is checked against a member list kept by the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+				</p>
+			</dd>
+
+			<dt><code>com.atproto.managedspace.policy</code></dt>
+			<dd>
+				<p>
+					access is decided by an outside <strong><a href="../service/managing-app/">managing app</a></strong>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			(For more, see: <a href="../service/space-host/"><abbr title="AT-Protocol">ATProto</abbr> Space Host</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Developer Guides</h1>
+		<p>
+			Here is a list of <strong>developer guides</strong> for <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>spaces</strong>:
+		</p>
+		<section>
+			<h1>Index</h1>
+			<section>
+				<h1>A</h1>
+			</section>
+			<section>
+				<h1>B</h1>
+			</section>
+			<section>
+				<h1>C</h1>
+			</section>
+			<section>
+				<h1>D</h1>
+			</section>
+			<section>
+				<h1>E</h1>
+			</section>
+			<section>
+				<h1>F</h1>
+			</section>
+			<section>
+				<h1>G</h1>
+			</section>
+			<section>
+				<h1>H</h1>
+			</section>
+			<section>
+				<h1>I</h1>
+			</section>
+			<section>
+				<h1>J</h1>
+			</section>
+			<section>
+				<h1>K</h1>
+			</section>
+			<section>
+				<h1>L</h1>
+			</section>
+			<section>
+				<h1>M</h1>
+				<ul>
+					<li><a href="../service/managing-app/">Managing App (Service)</a> — decides who may read and write a “managed” space</li>
+				</ul>
+			</section>
+			<section>
+				<h1>N</h1>
+			</section>
+			<section>
+				<h1>O</h1>
+			</section>
+			<section>
+				<h1>P</h1>
+			</section>
+			<section>
+				<h1>Q</h1>
+			</section>
+			<section>
+				<h1>R</h1>
+				<ul>
+					<li><a href="../service/repo-host/">Repo Host (Service)</a> — stores and serves users' records in spaces</li>
+				</ul>
+			</section>
+			<section>
+				<h1>S</h1>
+				<ul>
+					<li><a href="../service/space-host/">Space Host (Service)</a> — answers for a space as a whole</li>
+					<li><a href="../service/space-mirror/">Space Mirror (Service)</a> — an internal syncer that serves its copy of a space to an application's other services (not from the proposal)</li>
+					<li><a href="../service/syncer/">Syncer (Service)</a> — keeps its own copy of a space up-to-date</li>
+				</ul>
+			</section>
+			<section>
+				<h1>T</h1>
+			</section>
+			<section>
+				<h1>U</h1>
+			</section>
+			<section>
+				<h1>V</h1>
+			</section>
+			<section>
+				<h1>W</h1>
+			</section>
+			<section>
+				<h1>X</h1>
+				<ul>
+					<li><a href="xrpc/">XRPC API End-Points</a> — every <code>com.atproto.space</code> end-point</li>
+				</ul>
+			</section>
+			<section>
+				<h1>Y</h1>
+			</section>
+			<section>
+				<h1>Z</h1>
+			</section>
+		</section>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026) — especially the “Introduction”, “Relationship to public broadcast”, “Terminology”, “Spaces”, “Addressing”, “Credential flow”, and “Baseline policies” sections</li>
+			<li><a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (“Atproto spaces”) — draft lexicons and implementation, as of commit <code>9ded207</code> (November 20th, 2026)</li>
+			<li><a href="https://dholms.leaflet.pub/3mu3p3ldwrc26">Reintroducing Spaces</a> — the “friendlier introduction” the proposal points to</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>

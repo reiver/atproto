@@ -61,7 +61,7 @@
 	</p>
 	<p>
 		<strong>Note!</strong>
-		<strong>Spaces</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		<strong><a href="../../space/">Spaces</a></strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
 		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
 		The proposal itself says:
 	</p>
@@ -642,8 +642,8 @@ func main() {
 				The syncer face calls <code>setServing</code> after each <code>authorizeSpaceSync</code> (<code>true</code> for a new credential, <code>false</code> for access denied), <code>deleteSpace</code> on <code>SpaceDeleted</code>, and <code>setAccountStatus</code> on each firehose <code>#account</code> event.
 			</li>
 			<li>
-				The parameter names (<code>space</code>, <code>repo</code>, <code>collection</code>, <code>rkey</code>), the <code>SpaceNotFound</code> error, and the response shape are this article's choices.
-				There are no published lexicons for <strong>spaces</strong> yet — and, since this is internal, they are yours to decide anyway.
+				The parameters (<code>space</code>, <code>repo</code>, <code>collection</code>, <code>rkey</code>), the response (<code>uri</code>, <code>cid</code>, <code>value</code>), and the <code>SpaceNotFound</code> error match the <em>draft</em> lexicon for <code>com.atproto.space.getRecord</code> (from <a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a>, which is not merged).
+				Since this is internal, they are yours to decide anyway — but matching the real end-point lets your services use the same client code.
 				(<code>RepoDeactivated</code> and <code>RecordNotFound</code> are the error names used for public repos — and the proposal says <strong>space</strong> sync errors “should have the same error names as for public repo sync responses”.)
 			</li>
 			<li>
@@ -679,6 +679,7 @@ func main() {
 		<h1>Sources</h1>
 		<ul>
 			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026) — especially the “Introduction”, “Credential flow”, “Credential expiration and revocation”, “Presenting a space credential”, “Commit authenticity”, “Space deletion”, “Moderation”, “Access control in applications”, “Scaling”, and “Account lifecycle” sections</li>
+			<li><a href="https://github.com/bluesky-social/atproto/pull/5187">bluesky-social/atproto pull request #5187</a> (“Atproto spaces”) — draft lexicon for <code>com.atproto.space.getRecord</code>, as of commit <code>9ded207</code> (November 20th, 2026)</li>
 		</ul>
 	</section>
 	<footer>
