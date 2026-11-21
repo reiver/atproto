@@ -257,6 +257,66 @@
 			These are called <strong>self-labels</strong>.
 			Their source is the author's own account, and they are proven by the <strong>repository</strong>'s own commit signature, rather than by a separate <code>sig</code>.
 		</p>
+		<p>
+			For example, here is an <code>app.bsky.feed.post</code> record (a Bluesky post), with a self-label:
+		</p>
+		<figure>
+			<pre>
+{
+  "$type": "app.bsky.feed.post",
+  "text": "My new painting.",
+  "createdAt": "2026-11-21T12:00:00.000Z",
+  "labels": {
+    "$type": "com.atproto.label.defs#selfLabels",
+    "values": [
+      { "val": "nudity" }
+    ]
+  }
+}
+			</pre>
+		</figure>
+		<p>
+			(This is an illustrative example, with an image left out.)
+		</p>
+		<p>
+			Notice that a self-label is much smaller than a full <strong>label</strong>:
+		</p>
+		<ul>
+			<li>
+				It has only a <code>val</code>.
+				There is no <code>src</code> (it is the author), no <code>uri</code> (it is this record), and no <code>sig</code> (the record is already signed).
+			</li>
+			<li>
+				The <code>labels</code> field is a <em>union</em> in the lexicon, so it needs a <code>$type</code> — <code>com.atproto.label.defs#selfLabels</code>.
+			</li>
+			<li>
+				A record can have at most 10 self-labels.
+			</li>
+		</ul>
+		<p>
+			Self-labels can also apply to a whole account.
+			The <code>app.bsky.actor.profile</code> record has the same kind of <code>labels</code> field.
+			For example, a profile with the <code>!no-unauthenticated</code> self-label asks applications not to show the account to people who are not logged in:
+		</p>
+		<figure>
+			<pre>
+{
+  "$type": "app.bsky.actor.profile",
+  "displayName": "Joe Blow",
+  "labels": {
+    "$type": "com.atproto.label.defs#selfLabels",
+    "values": [
+      { "val": "!no-unauthenticated" }
+    ]
+  }
+}
+			</pre>
+		</figure>
+		<p>
+			(Only some record types have a <code>labels</code> field.
+			It is up to each record type's lexicon.
+			At the time of writing, <code>app.bsky.feed.post</code>, <code>app.bsky.actor.profile</code>, and <code>app.bsky.labeler.service</code> all do.)
+		</p>
 	</section>
 	<section>
 		<h1>A Labeler's Identity</h1>
