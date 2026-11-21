@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Feed Generator: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="algorithm" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="custom feed" />
+<meta name="category" content="feed" />
+<meta name="category" content="feed generator" />
+<meta name="category" content="feeds" />
+<meta name="category" content="getFeedSkeleton" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Feed Generator</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Feed Generator</h1>
+			<p>
+				the service that decides which posts go in a custom feed
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>feed generator</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>service</strong> that provides a <strong>custom feed</strong> — its own algorithm for choosing which posts to show, and in what order.
+	</p>
+	<p>
+		Bluesky's starter kit for building one describes it this way:
+	</p>
+	<blockquote>
+		<p>
+			Feed Generators are services that provide custom algorithms to users through the AT Protocol.
+		</p>
+	</blockquote>
+	<p>
+		<mark>A <strong>feed generator</strong> does <em>not</em> return posts.
+		It returns only a list of post <abbr title="Uniform Resource Identifier">URI</abbr>s — called a <strong>skeleton</strong>.
+		An <strong><a href="../appview/">AppView</a></strong> then fills in each post's content, author, like counts, etc., before the feed reaches the user.</mark>
+	</p>
+	<p>
+		That keeps a <strong>feed generator</strong> simple.
+		It only has to decide <em>which</em> posts.
+		It does not have to store or serve the posts themselves.
+	</p>
+	<p>
+		And, anyone can run a <strong>feed generator</strong>.
+		The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> overview names it as one of the network's supporting services:
+	</p>
+	<blockquote>
+		<p>
+			There are also supporting services such as feed generators and labelers.
+		</p>
+	</blockquote>
+	<section>
+		<h1>How a Custom Feed Works</h1>
+		<p>
+			When a user opens a custom feed in their application, this is what happens:
+		</p>
+		<figure>
+			<pre>
+┌─────┐  getFeed   ┌────────────┐  getFeed   ┌─────────┐  getFeedSkeleton  ┌────────────────┐
+│ app │ ─────────► │ user's PDS │ ─────────► │ AppView │ ────────────────► │ feed generator │
+└─────┘            └────────────┘            └─────────┘                   └────────────────┘
+   ▲                                              │  ▲                             │
+   │                                              │  └──── list of post URIs ──────┘
+   │                                              │        (the "skeleton")
+   └──────── full posts (the "hydrated" feed) ────┘
+			</pre>
+		</figure>
+		<ol>
+			<li>the application asks for the feed (<code>app.bsky.feed.getFeed</code>), through the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>, which forwards the request to an <strong><a href="../appview/">AppView</a></strong>,</li>
+			<li>the <strong>AppView</strong> looks up which <strong>feed generator</strong> provides the feed,</li>
+			<li>the <strong>AppView</strong> asks the <strong>feed generator</strong> for a skeleton (<code>app.bsky.feed.getFeedSkeleton</code>),</li>
+			<li>the <strong>feed generator</strong> answers with a list of post <abbr title="Uniform Resource Identifier">URI</abbr>s, and</li>
+			<li>the <strong>AppView</strong> fills in (“hydrates”) each post, and returns the full feed.</li>
+		</ol>
+		<p>
+			(The starter kit's README describes an older version of this, where the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> did the hydrating itself.
+			It says: “In the future, the PDS will hydrate the feed with the help of an App View”.
+			Today, as the diagram shows, the hydrating is done by the <strong>AppView</strong> — for example, asking <code>public.api.bsky.app</code> for a custom feed with <code>getFeed</code> returns fully hydrated posts.)
+		</p>
+	</section>
+	<section>
+		<h1>Two Parts: the Service and the Record</h1>
+		<p>
+			A custom feed has 2 parts:
+		</p>
+		<dl>
+			<dt>the service</dt>
+			<dd>
+				<p>
+					the <strong>feed generator</strong> itself — a server, identified by a <strong><abbr title="decentralized identifier">DID</abbr></strong>, that runs the algorithm.
+				</p>
+			</dd>
+
+			<dt>the record</dt>
+			<dd>
+				<p>
+					an <code>app.bsky.feed.generator</code> record, in the <strong>repository</strong> of whoever publishes the feed.
+					It gives the feed a name, description, and avatar — and points to the service's <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			A feed is identified by the <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> of its <em>record</em> — not by the service.
+			That means one <strong>feed generator</strong> service can provide many different feeds.
+		</p>
+		<figure>
+			<pre>
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot      ──┐
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/discover       ──┼──► did:web:discover.bsky.app
+at://did:plc:wqowuobffl66jv3kpsvo7ak4/app.bsky.feed.generator/the-algorithm  ──┘
+                           (records — one per feed)                                     (one service)
+			</pre>
+		</figure>
+		<section>
+			<h1>The Record</h1>
+			<p>
+				For example, here is the record for Bluesky's “Discover” feed, in the <code>bsky.app</code> account's <strong>repository</strong>:
+			</p>
+			<figure>
+				<pre>
+$ curl 'https://puffball.us-east.host.bsky.network/xrpc/com.atproto.repo.getRecord?repo=did:plc:z72i7hdynmk6r22z27h6tvur&amp;collection=app.bsky.feed.generator&amp;rkey=whats-hot'
+{
+  "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot",
+  "value": {
+    "$type": "app.bsky.feed.generator",
+    "did": "did:web:discover.bsky.app",
+    "displayName": "Discover",
+    "description": "Trending content from your personal network",
+    "acceptsInteractions": true,
+    "createdAt": "2023-05-19T23:19:19.592Z",
+    "avatar": …
+  },
+  ...
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been trimmed and reformatted, to make it easier to read.)
+			</p>
+			<p>
+				The important field is <code>did</code> — the <strong><abbr title="decentralized identifier">DID</abbr></strong> of the <strong>feed generator</strong> service.
+				Notice that the record-key (<code>whats-hot</code>) does not have to match the display name (“Discover”).
+			</p>
+			<p>
+				The other fields are:
+			</p>
+			<dl>
+				<dt><code>displayName</code></dt>
+				<dd>
+					<p>
+						(required) the feed's name — at most 24 characters.
+					</p>
+				</dd>
+
+				<dt><code>description</code></dt>
+				<dd>
+					<p>
+						(optional) at most 300 characters.
+					</p>
+				</dd>
+
+				<dt><code>avatar</code></dt>
+				<dd>
+					<p>
+						(optional) a PNG or JPEG image, at most 1 megabyte.
+					</p>
+				</dd>
+
+				<dt><code>acceptsInteractions</code></dt>
+				<dd>
+					<p>
+						(optional) whether the feed accepts feedback from users (through <code>app.bsky.feed.sendInteractions</code>) — such as “show more like this”.
+					</p>
+				</dd>
+
+				<dt><code>contentMode</code></dt>
+				<dd>
+					<p>
+						(optional) for example, <code>app.bsky.feed.defs#contentModeVideo</code> for a video feed.
+					</p>
+				</dd>
+
+				<dt><code>labels</code></dt>
+				<dd>
+					<p>
+						(optional) <a href="../labeler/">self-labels</a>.
+					</p>
+				</dd>
+
+				<dt><code>createdAt</code></dt>
+				<dd>
+					<p>
+						(required) when the record was created.
+					</p>
+				</dd>
+			</dl>
+		</section>
+		<section>
+			<h1>The Service</h1>
+			<p>
+				The service's <strong><abbr title="decentralized identifier">DID</abbr></strong> is resolved like any other — and its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> has a <code>#bsky_fg</code> service, with the type <code>BskyFeedGenerator</code>, saying where the server is:
+			</p>
+			<figure>
+				<pre>
+$ curl https://discover.bsky.app/.well-known/did.json
+{
+  "id": "did:web:discover.bsky.app",
+  "service": [
+    {
+      "id": "#bsky_fg",
+      "type": "BskyFeedGenerator",
+      "serviceEndpoint": "https://discover.bsky.app"
+    }
+  ]
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been reformatted, to make it easier to read.)
+			</p>
+			<p>
+				(See: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a> — it is the same kind of lookup, but for <code>#bsky_fg</code> instead of <code>#atproto_pds</code>.)
+			</p>
+			<p>
+				Many <strong>feed generators</strong> use a <code>did:web</code>, since it is easy to set up — the starter kit does.
+				But, the starter kit suggests a <code>did:plc</code> if the <strong>feed generator</strong> is expected to be long-lived, and might move to a different Internet domain.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>XRPC API End-Points</h1>
+		<p>
+			A <strong>feed generator</strong> implements 2 <strong>XRPC</strong> API end-points:
+		</p>
+		<section>
+			<h1>app.bsky.feed.getFeedSkeleton</h1>
+			<p>
+				This is the main one.
+				It takes these parameters:
+			</p>
+			<dl>
+				<dt><code>feed</code></dt>
+				<dd>
+					<p>
+						(required) the <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> of the feed's record — so the <strong>feed generator</strong> knows <em>which</em> of its feeds is being asked for.
+					</p>
+				</dd>
+
+				<dt><code>limit</code></dt>
+				<dd>
+					<p>
+						(optional) how many posts — from 1 to 100, and 50 by default.
+					</p>
+				</dd>
+
+				<dt><code>cursor</code></dt>
+				<dd>
+					<p>
+						(optional) where to continue from, for the next page.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				For example:
+			</p>
+			<figure>
+				<pre>
+$ curl 'https://discover.bsky.app/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot&amp;limit=3'
+{
+  "feed": [
+    {
+      "post": "at://did:plc:…/app.bsky.feed.post/3n2swdlxghc2w",
+      "feedContext": "th-food_drink"
+    },
+    {
+      "post": "at://did:plc:…/app.bsky.feed.post/3n2sqxvjwei2d",
+      "feedContext": "th-nature_animals_pets"
+    },
+    {
+      "post": "at://did:plc:…/app.bsky.feed.post/3n2sm6gypqk2x",
+      "feedContext": "th-music"
+    }
+  ],
+  "cursor": "eyJvIjoiMjAyNi0xMS0yMVQwMDoxODo0Mi43OTM3NjM5MVoi…"
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been trimmed and reformatted, to make it easier to read.
+				The posts' authors' <strong><abbr title="decentralized identifier">DID</abbr>s</strong> have been left out.)
+			</p>
+			<p>
+				Notice how little is in it.
+				Just post <abbr title="Uniform Resource Identifier">URI</abbr>s — no text, no authors, no images.
+			</p>
+			<p>
+				Each item in <code>feed</code> can have:
+			</p>
+			<dl>
+				<dt><code>post</code></dt>
+				<dd>
+					<p>
+						(required) the post's <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>.
+					</p>
+				</dd>
+
+				<dt><code>reason</code></dt>
+				<dd>
+					<p>
+						(optional) <em>why</em> the post is in the feed — either a repost (<code>app.bsky.feed.defs#skeletonReasonRepost</code>, with the repost's <abbr title="Uniform Resource Identifier">URI</abbr>), or a pinned post (<code>app.bsky.feed.defs#skeletonReasonPin</code>).
+					</p>
+				</dd>
+
+				<dt><code>feedContext</code></dt>
+				<dd>
+					<p>
+						(optional) a string the <strong>feed generator</strong> can use for its own purposes.
+						It is passed through to the application, and may be sent back to the <strong>feed generator</strong> with the user's interactions.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				The response can also have:
+			</p>
+			<dl>
+				<dt><code>cursor</code></dt>
+				<dd>
+					<p>
+						for the next page.
+						Its contents are entirely up to the <strong>feed generator</strong> — it is passed through, unchanged, to and from the application.
+						(The starter kit strongly recommends that it be unique for each feed item — for example, a timestamp plus a <abbr title="content identifier">CID</abbr>.)
+					</p>
+				</dd>
+
+				<dt><code>reqId</code></dt>
+				<dd>
+					<p>
+						a unique identifier for the request, which may be sent back with the user's interactions.
+					</p>
+				</dd>
+			</dl>
+			<p>
+				If the <code>feed</code> is not one the <strong>feed generator</strong> provides, it answers with an <code>UnknownFeed</code> error.
+			</p>
+		</section>
+		<section>
+			<h1>app.bsky.feed.describeFeedGenerator</h1>
+			<p>
+				This lists the feeds the <strong>feed generator</strong> provides:
+			</p>
+			<figure>
+				<pre>
+$ curl https://discover.bsky.app/xrpc/app.bsky.feed.describeFeedGenerator
+{
+  "did": "did:web:discover.bsky.app",
+  "feeds": [
+    { "uri": "at://did:plc:yofh3kx63drvfljkibw5zuxo/app.bsky.feed.generator/discover" },
+    { "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/discover" },
+    { "uri": "at://did:plc:vpkhqolt662uhesyj6nxm7ys/app.bsky.feed.generator/discover" },
+    { "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot" },
+    { "uri": "at://did:plc:wqowuobffl66jv3kpsvo7ak4/app.bsky.feed.generator/the-algorithm" },
+    ...
+  ]
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been trimmed and reformatted, to make it easier to read.)
+			</p>
+			<p>
+				It can also include <code>links</code> to a privacy policy and terms of service.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Authentication</h1>
+		<p>
+			The lexicon for <code>getFeedSkeleton</code> says:
+		</p>
+		<blockquote>
+			<p>
+				Auth is optional, depending on provider requirements, and provides the DID of the requester.
+			</p>
+		</blockquote>
+		<p>
+			When a logged-in user asks for a feed, the request to the <strong>feed generator</strong> includes a <abbr title="JSON Web Token">JWT</abbr>, signed with the <em>user's</em> key — the same kind of inter-service <abbr title="JSON Web Token">JWT</abbr> described in the <a href="../appview/">AppView</a> article:
+		</p>
+		<ul>
+			<li><code>iss</code> is the user's <strong><abbr title="decentralized identifier">DID</abbr></strong>,</li>
+			<li><code>aud</code> is the <strong>feed generator</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong>, and</li>
+			<li><code>exp</code> is when it expires.</li>
+		</ul>
+		<p>
+			A feed that is the same for everyone (for example, “all posts about cats”) does not need to check it.
+			But, a <em>personalized</em> feed (for example, “popular posts from people <em>you</em> follow”) needs to know who the user is.
+			The starter kit says:
+		</p>
+		<blockquote>
+			<p>
+				If you are creating a generic feed that does not differ for different users, you do not need to check auth. But if a user's state (such as follows or likes) is taken into account, we <em>strongly</em> encourage you to validate their auth token.
+			</p>
+		</blockquote>
+		<p>
+			To validate it, check the <abbr title="JSON Web Token">JWT</abbr>'s signature against the key in the user's <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, and check that <code>aud</code> is the <strong>feed generator</strong>'s own <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Where the Posts Come From</h1>
+		<p>
+			How a <strong>feed generator</strong> picks its posts is entirely up to it.
+			At the simplest, it could return a hard-coded list.
+		</p>
+		<p>
+			But, most <strong>feed generators</strong> read the <strong><a href="../relay/">relay</a></strong>'s <strong>firehose</strong>, and keep their own index of the posts (and likes, follows, etc.) their algorithm needs.
+			Since they only return post <abbr title="Uniform Resource Identifier">URI</abbr>s, they can keep as little as they need.
+			The starter kit says:
+		</p>
+		<blockquote>
+			<p>
+				Since Feed Generators do not need to provide hydrated posts, you can index as much or as little of the firehose as necessary.
+			</p>
+		</blockquote>
+		<figure>
+			<pre>
+┌───────┐  firehose  ┌─────────────────────────────┐  skeleton  ┌─────────┐
+│ relay │ ─────────► │ feed generator              │ ─────────► │ AppView │
+└───────┘            │  (filter, index, rank)      │            └─────────┘
+                     └─────────────────────────────┘
+			</pre>
+		</figure>
+		<p>
+			The starter kit suggests some ideas:
+		</p>
+		<ul>
+			<li><strong>“What's Hot”</strong> — keep a running count of likes for each post, and return recent posts with enough likes,</li>
+			<li><strong>a community feed</strong> — keep a list of the community's members, and return their posts,</li>
+			<li><strong>a topical feed</strong> — filter posts by their text (with a keyword match, or some other classifier).</li>
+		</ul>
+		<p>
+			It also notes that most algorithms do not need to keep posts for long — often, anything older than 48 hours can be thrown away.
+		</p>
+	</section>
+	<section>
+		<h1>Publishing a Feed</h1>
+		<p>
+			To make a feed available to users:
+		</p>
+		<ol>
+			<li>run the <strong>feed generator</strong> service, on <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> (port 443),</li>
+			<li>make its <strong><abbr title="decentralized identifier">DID</abbr></strong> resolvable, with a <code>#bsky_fg</code> service pointing to the server, and</li>
+			<li>create an <code>app.bsky.feed.generator</code> record in your account's <strong>repository</strong>, with <code>did</code> set to the service's <strong><abbr title="decentralized identifier">DID</abbr></strong>.</li>
+		</ol>
+		<p>
+			After that, users can find the feed, pin it, and share it — the record's <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> is how everyone refers to it.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a minimal <strong>feed generator</strong>, in the Go programming-language.
+			It serves its own <code>did:web</code> <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, <code>describeFeedGenerator</code>, and <code>getFeedSkeleton</code>.
+			Its “algorithm” is just a hard-coded list of 2 posts, from the <code>bsky.app</code> account.
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+)
+
+const (
+	// The feed generator's hostname, and its did:web.
+	hostname = "feed.example.com"
+	did      = "did:web:" + hostname
+
+	// The at-uri of the app.bsky.feed.generator record that declares the feed.
+	// (It lives in the repository of the account that publishes the feed.)
+	feedURI = "at://did:example:alice/app.bsky.feed.generator/my-feed"
+)
+
+// writeJSON writes a value as a JSON HTTP response.
+func writeJSON(w http.ResponseWriter, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(value)
+}
+
+// didDocument serves /.well-known/did.json, so that did:web:feed.example.com can be resolved.
+func didDocument(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]any{
+		"@context": []string{"https://www.w3.org/ns/did/v1"},
+		"id":       did,
+		"service": []map[string]string{
+			{
+				"id":              "#bsky_fg",
+				"type":            "BskyFeedGenerator",
+				"serviceEndpoint": "https://" + hostname,
+			},
+		},
+	})
+}
+
+// describeFeedGenerator serves app.bsky.feed.describeFeedGenerator.
+func describeFeedGenerator(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]any{
+		"did": did,
+		"feeds": []map[string]string{
+			{"uri": feedURI},
+		},
+	})
+}
+
+// getFeedSkeleton serves app.bsky.feed.getFeedSkeleton.
+func getFeedSkeleton(w http.ResponseWriter, r *http.Request) {
+	if feedURI != r.URL.Query().Get("feed") {
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, map[string]string{"error": "UnknownFeed", "message": "unknown feed"})
+		return
+	}
+
+	// A real feed generator would choose these posts by its own algorithm.
+	// (Usually from posts it has indexed from a relay's firehose.)
+	writeJSON(w, map[string]any{
+		"feed": []map[string]string{
+			{"post": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2opitxdyc2j"},
+			{"post": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2m24be4e223"},
+		},
+	})
+}
+
+func main() {
+	http.HandleFunc("/.well-known/did.json", didDocument)
+	http.HandleFunc("/xrpc/app.bsky.feed.describeFeedGenerator", describeFeedGenerator)
+	http.HandleFunc("/xrpc/app.bsky.feed.getFeedSkeleton", getFeedSkeleton)
+
+	// In production, this must be HTTPS, on port 443.
+	log.Fatal(http.ListenAndServe(":3000", nil))
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it, and asking it for the feed, gave:
+		</p>
+		<figure>
+			<pre>
+$ curl 'http://localhost:3000/xrpc/app.bsky.feed.getFeedSkeleton?feed=at://did:example:alice/app.bsky.feed.generator/my-feed'
+{"feed":[{"post":"at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2opitxdyc2j"},{"post":"at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2m24be4e223"}]}
+			</pre>
+		</figure>
+		<p>
+			(To keep it short, this example does not check the <abbr title="JSON Web Token">JWT</abbr>, does not support <code>cursor</code> or <code>limit</code>, and does not read the <strong>firehose</strong>.
+			It also only runs locally — a real <strong>feed generator</strong> must be reachable at its hostname, on <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr>.)
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>feed generator</strong>:
+		</p>
+		<ol>
+			<li>provides one or more custom feeds — each declared by an <code>app.bsky.feed.generator</code> record, and identified by that record's <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>,</li>
+			<li>is a service with its own <strong><abbr title="decentralized identifier">DID</abbr></strong>, and a <code>#bsky_fg</code> service in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>,</li>
+			<li>answers <code>getFeedSkeleton</code> with only a list of post <abbr title="Uniform Resource Identifier">URI</abbr>s — the <strong>AppView</strong> fills in the posts,</li>
+			<li>can know who is asking (from the user's <abbr title="JSON Web Token">JWT</abbr>), so it can personalize, and</li>
+			<li>usually builds its own index from a <strong>relay</strong>'s <strong>firehose</strong>.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/feed-generator">bluesky-social/feed-generator</a> (starter kit and README)</li>
+			<li><a href="https://atproto.com/guides/overview">AT Protocol Overview</a></li>
+			<li><code>app.bsky.feed.getFeedSkeleton</code>, <code>app.bsky.feed.describeFeedGenerator</code>, <code>app.bsky.feed.generator</code>, and <code>app.bsky.feed.defs</code> lexicons — resolved from the network (see: <a href="../../how-to/resolve-lexicon/">How-To Resolve a Lexicon</a>)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
