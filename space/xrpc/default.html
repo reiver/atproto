@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Spaces XRPC API End-Points: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="com.atproto.space" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="social web" />
+<meta name="category" content="spaces" />
+<meta name="category" content="xrpc" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Spaces</a></li>
+		<li><a href="./" aria-current="page">XRPC</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Spaces XRPC API End-Points</h1>
+			<p>
+				every <code>com.atproto.space</code> end-point, who implements it, and who calls it
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		<strong>Spaces</strong> are a proposed addition to the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) for <em>permissioned</em> data — records that only some people (and some applications) are allowed to read.
+		For example: a private forum, a paid newsletter, or a user's bookmarks.
+	</p>
+	<p>
+		All of the <strong>XRPC</strong> API end-points for <strong>spaces</strong> live in one namespace.
+		The proposal says:
+	</p>
+	<blockquote>
+		<p>
+			All protocol XRPC methods for atproto spaces are currently defined under the <code>com.atproto.space</code> namespace.
+		</p>
+	</blockquote>
+	<p>
+		There are <strong>28</strong> of them.
+		This article lists them all.
+	</p>
+	<p>
+		The proposal groups them into 4 <em>roles</em> — <strong>space host</strong>, <strong>repo host</strong>, <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and <strong>syncer</strong>.
+		<mark>But, a role is a <em>kind of end-point</em>, not a separate server.
+		Usually, a single <strong><abbr title="Personal Data Server">PDS</abbr></strong> implements the space host, repo host, and <abbr title="Personal Data Server">PDS</abbr> end-points (26 of the 28).
+		The other 2 — the syncer end-points — are implemented by <em>applications</em>.</mark>
+		The proposal says:
+	</p>
+	<blockquote>
+		<p>
+			This grouping describes kinds of methods, not separate services. A single service (e.g. a PDS) is usually both a repo host for its accounts and a space host for the spaces anchored on it.
+		</p>
+	</blockquote>
+	<p>
+		<strong>Note!</strong>
+		At the time of writing, <strong>spaces</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		Also, there are no published <strong>lexicons</strong> for these end-points yet.
+		(For example, <code>lexicons/com/atproto/space/authorizeSpaceSync.json</code> does not exist in the <code>bluesky-social/atproto</code> repository, at the time of writing.)
+		So, this article gives each end-point's name, role, type, auth, and purpose — as the proposal describes them — but not every parameter.
+	</p>
+	<p>
+		This article describes the proposal as of November 2026.
+	</p>
+	<section>
+		<h1>XRPC, Briefly</h1>
+		<p>
+			An <strong>XRPC</strong> end-point is named by an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, and is called over <abbr title="HyperText Transfer Protocol">HTTP</abbr> at <code>/xrpc/</code> followed by that <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+			For example:
+		</p>
+		<figure>
+			<pre>
+https://pds.example.com/xrpc/com.atproto.space.listWriters
+			</pre>
+		</figure>
+		<p>
+			Each end-point is one of 2 types:
+		</p>
+		<dl>
+			<dt>query</dt>
+			<dd>
+				<p>
+					an <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code>, with the inputs in the query string.
+					It reads; it does not change anything.
+				</p>
+			</dd>
+
+			<dt>procedure</dt>
+			<dd>
+				<p>
+					an <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>POST</code>, usually with a <abbr title="JavaScript Object Notation">JSON</abbr> body.
+					It does something.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			In the tables below, end-points are written without the <code>com.atproto.space.</code> prefix.
+			So, <code>listWriters</code> means <code>com.atproto.space.listWriters</code>.
+		</p>
+	</section>
+	<section>
+		<h1>The 4 Kinds of Auth</h1>
+		<p>
+			The <strong>space</strong> end-points use 4 kinds of authorization:
+		</p>
+		<dl>
+			<dt>OAuth</dt>
+			<dd>
+				<p>
+					an application acting for a logged-in user, with a <code>space:</code> OAuth scope.
+					The scope says which <strong>spaces</strong> it covers, and what is allowed in them:
+				</p>
+				<ul>
+					<li><code>action</code> — what may be done to <em>records</em>: <code>read_self</code> (only the user's own records), <code>read</code> (everyone's records, and permission to ask for a <strong>delegation token</strong>), <code>create</code>, <code>update</code>, <code>delete</code>.</li>
+					<li><code>manage</code> — what may be done to the <strong>space</strong> <em>itself</em>: <code>create</code>, <code>update</code>, <code>delete</code>.</li>
+				</ul>
+				<p>
+					For example: <code>space:com.atmoboards.forum?authority=*&amp;manage=update&amp;manage=delete</code>.
+				</p>
+			</dd>
+
+			<dt>space credential</dt>
+			<dd>
+				<p>
+					a short-lived token, issued by the <strong>space authority</strong> through <code>authorizeSpaceSync</code>, that lets an application read <em>everything</em> in a <strong>space</strong>.
+					It is sent with the <code>Atproto-Space-Credential</code> scheme, plus an <abbr title="HyperText Transfer Protocol">HTTP</abbr> Message Signature:
+				</p>
+				<figure>
+					<pre>
+Authorization: Atproto-Space-Credential &lt;space-credential&gt;
+Atproto-Space-Audience: did:plc:repoOwner
+Signature-Input: sig=("authorization" "atproto-space-audience");tag="atproto-space-credential"
+Signature: sig=:wNmSUA...:
+					</pre>
+				</figure>
+			</dd>
+
+			<dt>service auth</dt>
+			<dd>
+				<p>
+					one server calling another.
+					A short-lived <abbr title="JSON Web Token">JWT</abbr> (<code>iss</code>, <code>aud</code>, <code>lxm</code>, <code>exp</code>, …), signed with the calling account's <code>#atproto</code> key.
+				</p>
+			</dd>
+
+			<dt>none (a token in the body)</dt>
+			<dd>
+				<p>
+					no <code>Authorization</code> header.
+					Instead, the proof is inside the request body — a <strong>delegation token</strong> and <strong>client attestation</strong> (for <code>authorizeSpaceSync</code>), or a notify token (for the syncer end-points).
+				</p>
+			</dd>
+		</dl>
+		<p>
+			The read end-points accept <em>either</em> OAuth or a space credential.
+			The write end-points accept <em>only</em> OAuth.
+			The proposal says this is “since a write is attributed to the authoring user”.
+		</p>
+	</section>
+	<section>
+		<h1>Who Calls Whom</h1>
+		<p>
+			Here is how the server-to-server end-points connect the 3 roles involved in syncing a <strong>space</strong>.
+			(The arrow points at whoever implements the end-point.)
+		</p>
+		<figure>
+			<pre>
+┌───────────┐                       ┌────────────┐                      ┌────────┐
+│           │   notifyRepoUpdate    │            │  notifySpaceUpdate   │        │
+│           │ ────────────────────► │            │ confirmRegistration  │        │
+│           │                       │            │ ───────────────────► │        │
+│           │                       │ space host │                      │        │
+│           │   notifyCredentials   │            │  authorizeSpaceSync  │        │
+│ repo host │        Revoked        │            │     listWriters      │ syncer │
+│           │ ◄──────────────────── │            │ ◄─────────────────── │        │
+│           │                       │            │                      │        │
+│           │                       └────────────┘                      │        │
+│           │       getRecord · listRecords · getBlob · listBlobs       │        │
+│           │          getLatestCommit · getRepo · listRepoOps          │        │
+│           │ ◄──────────────────────────────────────────────────────── │        │
+└───────────┘                                                           └────────┘
+			</pre>
+		</figure>
+		<p>
+			Not shown: the <abbr title="Personal Data Server">PDS</abbr> end-points (which an application calls on its user's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>, with OAuth), and <code>removeWriter</code>, <code>getSpace</code>, and <code>exportSpaceMeta</code> (which an application calls on the <strong>space host</strong>, with OAuth).
+		</p>
+	</section>
+	<section>
+		<h1>Space Host End-Points</h1>
+		<p>
+			A <strong><a href="../../service/space-host/">space host</a></strong> answers for a <strong>space</strong> as a whole — it hands out <strong>space credentials</strong>, keeps the <strong>writer set</strong> (who has written to the <strong>space</strong>), and sends out notifications.
+			It never stores the records themselves.
+			(Usually, it is the <strong>space authority</strong>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)
+		</p>
+		<p>
+			6 end-points:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Type</th>
+						<th>Auth</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>authorizeSpaceSync</code></td>
+						<td>procedure</td>
+						<td>none (delegation token and client attestation in the body)</td>
+						<td>give an application a <strong>space credential</strong> (permission to read the <strong>space</strong>) and the current <strong>space</strong> revision; optionally register it for notifications</td>
+					</tr>
+					<tr>
+						<td><code>listWriters</code></td>
+						<td>query</td>
+						<td>space credential</td>
+						<td>list who has written to the <strong>space</strong>, with each <strong>space repo</strong>'s current <code>repoRev</code> and <code>data</code> (digest)</td>
+					</tr>
+					<tr>
+						<td><code>removeWriter</code></td>
+						<td>procedure</td>
+						<td>OAuth (<code>manage=update</code>)</td>
+						<td>remove an account from the <strong>writer set</strong></td>
+					</tr>
+					<tr>
+						<td><code>getSpace</code></td>
+						<td>query</td>
+						<td>OAuth (<code>read_self</code>)</td>
+						<td>describe a <strong>space</strong> — its identity and current <strong>policy</strong></td>
+					</tr>
+					<tr>
+						<td><code>exportSpaceMeta</code></td>
+						<td>query</td>
+						<td>OAuth (<code>read_self</code>)</td>
+						<td>download the <strong>space</strong>'s own settings (its <strong>policy</strong>, member list, and <strong>writer set</strong>) as a <strong>space meta archive</strong>, for moving to another server</td>
+					</tr>
+					<tr>
+						<td><code>notifyRepoUpdate</code></td>
+						<td>procedure</td>
+						<td>service auth</td>
+						<td>a <strong>repo host</strong> reports that a user's <strong>space repo</strong> changed, with its new <code>repoRev</code> and <code>data</code></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			Here is an example <code>authorizeSpaceSync</code> request body, from the proposal:
+		</p>
+		<figure>
+			<pre>
+{
+  "space": "at://did:example:space_did/space/com.example.space_type/space_key",
+  "credentialKey": "did:key:zDna...",
+  "delegationToken": "eyJ...",
+  "clientAttestation": "eyJ...",
+  "notify": {
+    "endpoint": "https://syncer.example.com",
+    "token": "kq7Vx2Rj9mPzL4wN8tBcY1hF6sDgE3aQoU5iZ0nKpWe"
+  }
+}
+			</pre>
+		</figure>
+		<p>
+			Only <code>space</code> and <code>credentialKey</code> are always required.
+			The response contains the <code>credential</code> and the <strong>space</strong>'s current <code>spaceRev</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Repo Host End-Points</h1>
+		<p>
+			A <strong><a href="../../service/repo-host/">repo host</a></strong> stores and serves users' <strong>space repos</strong> — one user's records in one <strong>space</strong>.
+			(Usually, it is the user's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)
+		</p>
+		<p>
+			8 end-points:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Type</th>
+						<th>Auth</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>getRecord</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>fetch a single record's value</td>
+					</tr>
+					<tr>
+						<td><code>listRecords</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>list the records in a <strong>space repo</strong>, including their values by default (set <code>excludeValues</code> for just the metadata)</td>
+					</tr>
+					<tr>
+						<td><code>getBlob</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>fetch a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> (an image, video, etc) by <abbr title="Content IDentifier">CID</abbr></td>
+					</tr>
+					<tr>
+						<td><code>listBlobs</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>list the <abbr title="Content IDentifier">CID</abbr>s of the <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> that a <strong>space repo</strong>'s records refer to</td>
+					</tr>
+					<tr>
+						<td><code>getLatestCommit</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>get the current <strong>commit</strong> for a <strong>space repo</strong></td>
+					</tr>
+					<tr>
+						<td><code>getRepo</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>download a whole <strong>space repo</strong>, as a <strong>STAR</strong> archive</td>
+					</tr>
+					<tr>
+						<td><code>listRepoOps</code></td>
+						<td>query</td>
+						<td>OAuth or space credential</td>
+						<td>get a <strong>space repo</strong>'s changes since a given revision, including record values by default — the main way to sync</td>
+					</tr>
+					<tr>
+						<td><code>notifyCredentialsRevoked</code></td>
+						<td>procedure</td>
+						<td>service auth</td>
+						<td>the <strong>space authority</strong> revokes one or more <strong>space credentials</strong> early, identified by <code>jti</code></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				The proposal calls <code>listRepoOps</code> the “Primary sync mechanism”.
+				<code>getRepo</code> is for when a <strong>syncer</strong> starts from nothing (or has fallen too far behind).
+			</li>
+			<li>
+				With OAuth, the read end-points only reach the user's <em>own</em> <strong>space repo</strong>, on the user's <em>own</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+				To read <em>other</em> users' <strong>space repos</strong>, an application needs a <strong>space credential</strong>.
+			</li>
+			<li>
+				When called with a <strong>space credential</strong>, the end-points that return a <strong>commit</strong> (<code>getLatestCommit</code>, <code>getRepo</code>, <code>listRepoOps</code>) or a single record (<code>getRecord</code>) require a <abbr title="Message Authentication Code">MAC</abbr> — the <strong>syncer</strong> asks for one with an <code>Accept-Signature</code> header, and the <strong>repo host</strong> returns it in the <abbr title="HyperText Transfer Protocol">HTTP</abbr> headers — so the <strong>syncer</strong> can check the data really came from the <strong>repo host</strong>.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1><abbr title="Personal Data Server">PDS</abbr> End-Points</h1>
+		<p>
+			These are the baseline end-points that every <strong><abbr title="Personal Data Server">PDS</abbr></strong> must offer, so that applications have something to build on.
+			An application calls them on its user's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>, with OAuth.
+		</p>
+		<p>
+			12 end-points:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Type</th>
+						<th>Auth</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>getDelegationToken</code></td>
+						<td>query</td>
+						<td>OAuth</td>
+						<td>make a <strong>delegation token</strong> — proof that the user has authorized this application — to exchange for a <strong>space credential</strong> with <code>authorizeSpaceSync</code></td>
+					</tr>
+					<tr>
+						<td><code>createRecord</code></td>
+						<td>procedure</td>
+						<td>OAuth</td>
+						<td>create a record in the user's <strong>space repo</strong> in a <strong>space</strong></td>
+					</tr>
+					<tr>
+						<td><code>putRecord</code></td>
+						<td>procedure</td>
+						<td>OAuth</td>
+						<td>create or update a record</td>
+					</tr>
+					<tr>
+						<td><code>deleteRecord</code></td>
+						<td>procedure</td>
+						<td>OAuth</td>
+						<td>delete a record</td>
+					</tr>
+					<tr>
+						<td><code>applyWrites</code></td>
+						<td>procedure</td>
+						<td>OAuth</td>
+						<td>apply a batch of creates, updates, and deletes to one <strong>space repo</strong>, all at once</td>
+					</tr>
+					<tr>
+						<td><code>clearRecords</code></td>
+						<td>procedure</td>
+						<td>OAuth</td>
+						<td>delete every record in the user's <strong>space repo</strong> in a <strong>space</strong></td>
+					</tr>
+					<tr>
+						<td><code>importRepo</code></td>
+						<td>procedure</td>
+						<td>OAuth (<code>create</code> on every collection in the archive)</td>
+						<td>import a <strong>space repo</strong> from a <strong>STAR</strong> archive, when moving an account to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong></td>
+					</tr>
+					<tr>
+						<td><code>listSpaces</code></td>
+						<td>query</td>
+						<td>OAuth</td>
+						<td>list the <strong>spaces</strong> the user has records in, or is the <strong>space authority</strong> of</td>
+					</tr>
+					<tr>
+						<td><code>createSpace</code></td>
+						<td>procedure</td>
+						<td>OAuth (<code>manage=create</code>)</td>
+						<td>create a <strong>space</strong> with a given <strong>policy</strong> — the user becomes its <strong>space authority</strong></td>
+					</tr>
+					<tr>
+						<td><code>updateSpace</code></td>
+						<td>procedure</td>
+						<td>OAuth (<code>manage=update</code>)</td>
+						<td>replace a <strong>space</strong>'s <strong>policy</strong></td>
+					</tr>
+					<tr>
+						<td><code>deleteSpace</code></td>
+						<td>procedure</td>
+						<td>OAuth (<code>manage=delete</code>)</td>
+						<td>delete a <strong>space</strong></td>
+					</tr>
+					<tr>
+						<td><code>importSpaceMeta</code></td>
+						<td>procedure</td>
+						<td>OAuth (<code>manage=create</code> and <code>manage=update</code>)</td>
+						<td>import a <strong>space</strong>'s own settings from a <strong>space meta archive</strong>, when moving an account to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			Notice that the export end-points (<code>exportSpaceMeta</code> and <code>getRepo</code>) are in other roles, while their matching import end-points (<code>importSpaceMeta</code> and <code>importRepo</code>) are <abbr title="Personal Data Server">PDS</abbr> end-points.
+		</p>
+	</section>
+	<section>
+		<h1>Syncer End-Points</h1>
+		<p>
+			A <strong><a href="../../service/syncer/">syncer</a></strong> is an <em>application</em> that keeps its own copy of a <strong>space</strong>, by pulling from the <strong>repo hosts</strong>.
+			It implements 2 end-points, so the <strong>space host</strong> can tell it when something changes.
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Type</th>
+						<th>Auth</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>notifySpaceUpdate</code></td>
+						<td>procedure</td>
+						<td>none (notify token in the body)</td>
+						<td>the <strong>space host</strong> tells the <strong>syncer</strong> that a <strong>space repo</strong> changed (or was removed from the <strong>writer set</strong>), that the <strong>space</strong> itself changed (for example, was deleted), or that the <strong>syncer</strong>'s registration has expired</td>
+					</tr>
+					<tr>
+						<td><code>confirmRegistration</code></td>
+						<td>procedure</td>
+						<td>none (notify token in the body)</td>
+						<td>the <strong>space host</strong> checks that a new notification registration is wanted — the <strong>syncer</strong> echoes back a <code>challenge</code></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			The <strong>space host</strong> calls these on the <code>endpoint</code> the <strong>syncer</strong> gave in its <code>authorizeSpaceSync</code> request, and includes the <code>token</code> the <strong>syncer</strong> gave.
+		</p>
+	</section>
+	<section>
+		<h1>All 28, A to Z</h1>
+		<p>
+			For quick reference:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Role</th>
+						<th>Type</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>com.atproto.space.applyWrites</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.authorizeSpaceSync</code></td><td>space host</td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.clearRecords</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.confirmRegistration</code></td><td>syncer</td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.createRecord</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.createSpace</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.deleteRecord</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.deleteSpace</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.exportSpaceMeta</code></td><td>space host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.getBlob</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.getDelegationToken</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.getLatestCommit</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.getRecord</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.getRepo</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.getSpace</code></td><td>space host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.importRepo</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.importSpaceMeta</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.listBlobs</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.listRecords</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.listRepoOps</code></td><td>repo host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.listSpaces</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.listWriters</code></td><td>space host</td><td>query</td></tr>
+					<tr><td><code>com.atproto.space.notifyCredentialsRevoked</code></td><td>repo host</td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.notifyRepoUpdate</code></td><td>space host</td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.notifySpaceUpdate</code></td><td>syncer</td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.putRecord</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.removeWriter</code></td><td>space host</td><td>procedure</td></tr>
+					<tr><td><code>com.atproto.space.updateSpace</code></td><td><abbr title="Personal Data Server">PDS</abbr></td><td>procedure</td></tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Related Names That Are Not on the List</h1>
+		<section>
+			<h1>Names in com.atproto.space That Are Not End-Points</h1>
+			<p>
+				The proposal uses 2 other <code>com.atproto.space.*</code> names.
+				Neither is an end-point:
+			</p>
+			<dl>
+				<dt><code>com.atproto.space.defs</code></dt>
+				<dd>
+					<p>
+						shared definitions — for example, <code>com.atproto.space.defs#commit</code>, the <strong>commit</strong> that summarizes a <strong>space repo</strong>.
+					</p>
+				</dd>
+
+				<dt><code>com.atproto.space.policy</code></dt>
+				<dd>
+					<p>
+						a record type (collection).
+						If a <strong>space</strong>'s <code>publishPolicy</code> flag is set, its <strong>policy</strong> is published as a record of this type (with record key <code>self</code>) in the <strong>space authority</strong>'s own <strong>space repo</strong>.
+					</p>
+				</dd>
+			</dl>
+		</section>
+		<section>
+			<h1>Policy End-Points</h1>
+			<p>
+				How a <strong>space</strong> decides who may read and write is set by its <strong>policy</strong>.
+				The end-points that belong to a particular <strong>policy</strong> are <em>not</em> in <code>com.atproto.space</code>.
+				The proposal says: “By convention, these methods live in the same namespace as the policy”.
+			</p>
+			<figure>
+				<table>
+					<thead>
+						<tr>
+							<th>End-Point</th>
+							<th>Implemented By</th>
+							<th>Type</th>
+							<th>Auth</th>
+							<th>What It Does</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>com.atproto.memberspace.putMembers</code></td>
+							<td><abbr title="Personal Data Server">PDS</abbr></td>
+							<td>procedure</td>
+							<td>OAuth (<code>manage=update</code>)</td>
+							<td>add members, or change their <code>read</code> and <code>write</code> access</td>
+						</tr>
+						<tr>
+							<td><code>com.atproto.memberspace.removeMembers</code></td>
+							<td><abbr title="Personal Data Server">PDS</abbr></td>
+							<td>procedure</td>
+							<td>OAuth (<code>manage=update</code>)</td>
+							<td>remove members</td>
+						</tr>
+						<tr>
+							<td><code>com.atproto.memberspace.listMembers</code></td>
+							<td><abbr title="Personal Data Server">PDS</abbr></td>
+							<td>query</td>
+							<td>OAuth (<code>read_self</code>)</td>
+							<td>list the members and their <code>read</code> and <code>write</code> access</td>
+						</tr>
+						<tr>
+							<td><code>checkAccess</code></td>
+							<td>the <a href="../../service/managing-app/">managing app</a></td>
+							<td>query</td>
+							<td>service auth (from the <strong>space authority</strong>)</td>
+							<td>answer whether an account may read, and may write, a <strong>space</strong> (<code>managedspace</code> only)</td>
+						</tr>
+					</tbody>
+				</table>
+			</figure>
+			<p>
+				(The proposal gives <code>checkAccess</code> only as a short name.
+				By the convention above, it would be <code>com.atproto.managedspace.checkAccess</code>.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>What Is Missing</h1>
+		<p>
+			There is no end-point in the list for <em>uploading</em> a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> (an image, video, etc) into a <strong>space</strong> — only <code>getBlob</code> and <code>listBlobs</code>, for reading them.
+			(For public data, <abbr title="AT-Protocol">ATProto</abbr> has <code>com.atproto.repo.uploadBlob</code>.)
+			The proposal does not say how a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> gets into a <strong>space repo</strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<ol>
+			<li>All 28 <strong>XRPC</strong> API end-points for <abbr title="AT-Protocol">ATProto</abbr> <strong>spaces</strong> are in the <code>com.atproto.space</code> namespace.</li>
+			<li>They are grouped by role — space host (6), repo host (8), <abbr title="Personal Data Server">PDS</abbr> (12), and syncer (2).</li>
+			<li>A role is a kind of end-point, not a separate server — usually one <strong><abbr title="Personal Data Server">PDS</abbr></strong> implements 26 of them, and applications implement the 2 syncer end-points.</li>
+			<li>Read end-points accept OAuth or a <strong>space credential</strong>; write end-points accept only OAuth; server-to-server end-points use service auth or a token in the body.</li>
+			<li>Policy end-points (<code>com.atproto.memberspace.*</code>, and <code>checkAccess</code>) live outside <code>com.atproto.space</code>.</li>
+			<li>There are no published lexicons yet.</li>
+		</ol>
+		<p>
+			Again, this is all a <em>proposal</em>.
+			Details are likely to change.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026) — especially the “XRPC API”, “OAuth scopes”, “Access control”, “Space policy”, and “Baseline policies” sections</li>
+			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto">bluesky-social/atproto lexicons</a> — checked on November 21st, 2026; no <code>com/atproto/space/</code> lexicons yet</li>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
