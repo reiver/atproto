@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto AppView: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="app view" />
+<meta name="category" content="appview" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="open social web" />
+<meta name="category" content="service proxying" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">AppView</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> AppView</h1>
+			<p>
+				the service that turns the network's data into an application
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		An <strong>AppView</strong> is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong>service</strong> that collects data from across the network, and turns it into what an application shows its users — timelines, threads, profiles, like counts, search results, etc.
+	</p>
+	<p>
+		The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> glossary puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			An AppView is an application in the Atmosphere.
+			It's called an "AppView" because it's just one view of the network.
+			The canonical data lives in data repos which is hosted by PDSes, and that data can be viewed many different ways.
+		</p>
+	</blockquote>
+	<p>
+		<mark>An <strong>AppView</strong> is <em>not</em> where users' data lives.
+		The data lives on each user's <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>).
+		An <strong>AppView</strong> is an index <em>built from</em> that data — one particular <em>view</em> of it.</mark>
+	</p>
+	<p>
+		In other words, an <strong>AppView</strong> is the back-end of an application.
+		For example, Bluesky's <strong>AppView</strong> is the back-end of the Bluesky application.
+		And, other applications (that use different kinds of records) have their own <strong>AppViews</strong>.
+	</p>
+	<p>
+		The glossary compares <strong>AppViews</strong> to search engines:
+	</p>
+	<blockquote>
+		<p>
+			AppViews function a bit like search engines on the Web: they aggregate data from across the Atmosphere to produce their UIs.
+		</p>
+	</blockquote>
+	<section>
+		<h1>Where an AppView Fits</h1>
+		<p>
+			Here is how data flows from a user, through the network, to an <strong>AppView</strong>, and back out to other users:
+		</p>
+		<figure>
+			<pre>
+┌───────┐ write  ┌─────┐ firehose ┌───────┐ firehose ┌─────────┐  API   ┌─────────────┐
+│ user  │ ─────► │ PDS │ ───────► │ relay │ ───────► │ AppView │ ─────► │ users' apps │
+└───────┘        └─────┘          └───────┘          └─────────┘        └─────────────┘
+			</pre>
+		</figure>
+		<ol>
+			<li>a user writes a record (such as a post) to their <strong><abbr title="Personal Data Server">PDS</abbr></strong>,</li>
+			<li>the <strong><abbr title="Personal Data Server">PDS</abbr></strong> announces the change on its <strong>firehose</strong>,</li>
+			<li>a <strong><a href="../relay/">relay</a></strong> combines that <strong>firehose</strong> with the <strong>firehoses</strong> of many other <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>,</li>
+			<li>the <strong>AppView</strong> reads the <strong>relay</strong>'s <strong>firehose</strong>, and updates its index, and</li>
+			<li>applications ask the <strong>AppView</strong> for timelines, profiles, threads, etc.</li>
+		</ol>
+		<p>
+			The glossary says:
+			“AppViews use a Relay to fetch user data.”
+			(Although, a small <strong>AppView</strong> could read <strong><abbr title="Personal Data Server">PDS</abbr></strong> <strong>firehoses</strong> directly, without a <strong>relay</strong>.)
+		</p>
+		<p>
+			Note that <em>writes</em> do not go to the <strong>AppView</strong>.
+			They go to the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The <strong>AppView</strong> only finds out about them later, from the <strong>firehose</strong>.
+			(The glossary says <strong>AppViews</strong> “also communicate with users' PDSes to publish information on their repos” — that is, an application writes to a user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> on the user's behalf, after the user logs in with OAuth.)
+		</p>
+		<p>
+			The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> overview describes the 3 core services like this:
+		</p>
+		<blockquote>
+			<p>
+				The three core services in our network are Personal Data Servers (PDS), Relays, and App Views.
+			</p>
+		</blockquote>
+	</section>
+	<section>
+		<h1>What an AppView Adds</h1>
+		<p>
+			If the data lives on the <strong><abbr title="Personal Data Server">PDS</abbr></strong>, why do we need an <strong>AppView</strong> at all?
+		</p>
+		<p>
+			Because a <strong><abbr title="Personal Data Server">PDS</abbr></strong> only knows about <em>its own</em> users' records.
+			Lots of things an application needs can only be computed by looking at <em>everyone's</em> records.
+		</p>
+		<p>
+			For example, here is a user's profile <em>record</em>, as stored on their <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			These are all of its fields:
+		</p>
+		<figure>
+			<pre>
+$ curl 'https://blacksky.app/xrpc/com.atproto.repo.getRecord?repo=did:plc:scewmn2pl3oz36mxme2b6czz&amp;collection=app.bsky.actor.profile&amp;rkey=self'
+
+$type, avatar, banner, description, displayName, links, pinnedPost, pronouns
+			</pre>
+		</figure>
+		<p>
+			(The output has been reduced to just the field names, to make it easier to read.)
+		</p>
+		<p>
+			There is no follower count.
+			A user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> cannot know how many followers they have — the “follow” records are stored on the <em>followers'</em> <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>, all over the network.
+		</p>
+		<p>
+			But, ask an <strong>AppView</strong> for the same user's profile, and the counts are there:
+		</p>
+		<figure>
+			<pre>
+$ curl 'https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=reiver.blacksky.team'
+{
+  "did": "did:plc:scewmn2pl3oz36mxme2b6czz",
+  "handle": "reiver.blacksky.team",
+  "followersCount": 290,
+  "followsCount": 301,
+  "postsCount": 395,
+  ...
+}
+			</pre>
+		</figure>
+		<p>
+			(The output has been trimmed and reformatted, to make it easier to read.)
+		</p>
+		<p>
+			The <strong>AppView</strong> computed those counts by indexing everyone's records.
+			The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> overview says:
+		</p>
+		<blockquote>
+			<p>
+				App Views provide aggregated application data for the entire network. They support large-scale metrics (likes, reposts, followers), content discovery (algorithms), and user search.
+			</p>
+		</blockquote>
+		<p>
+			An <strong>AppView</strong> also does <em>hydration</em> — when it returns a post, it fills in things such as the author's handle and avatar, the like count, the reply count, and any moderation labels.
+			That way, the application gets everything it needs to show the post in a single response.
+		</p>
+	</section>
+	<section>
+		<h1>More Than One AppView</h1>
+		<p>
+			Since an <strong>AppView</strong> is “just one view of the network”, there can be more than one <strong>AppView</strong> for the same kind of data.
+		</p>
+		<p>
+			For example, at the time of writing, both of these answer the Bluesky API (<code>app.bsky.*</code>):
+		</p>
+		<ul>
+			<li><code>https://public.api.bsky.app</code> — Bluesky's <strong>AppView</strong>, and</li>
+			<li><code>https://api.blacksky.community</code> — the Blacksky team's <strong>AppView</strong></li>
+		</ul>
+		<p>
+			Ask both of them for the same user's profile, and you can get different answers:
+		</p>
+		<figure>
+			<pre>
+public.api.bsky.app      reiver.blacksky.team → followers=290    follows=301   posts=395
+api.blacksky.community   reiver.blacksky.team → followers=194    follows=301   posts=395
+
+public.api.bsky.app      bnewbold.net         → followers=21061  follows=1493  posts=8962
+api.blacksky.community   bnewbold.net         → followers=11869  follows=1492  posts=8962
+			</pre>
+		</figure>
+		<p>
+			Neither is “wrong”.
+			Each <strong>AppView</strong> counts what <em>it</em> has indexed.
+			Different <strong>AppViews</strong> may index different parts of the network, apply different moderation, or have been running for different lengths of time.
+		</p>
+		<p>
+			And, of course, applications that are <em>not</em> Bluesky have their own <strong>AppViews</strong>, for their own kinds of records.
+			An <strong>AppView</strong> only needs to index the records its application cares about.
+		</p>
+	</section>
+	<section>
+		<h1>How Applications Reach an AppView</h1>
+		<p>
+			There are 2 ways an application can talk to an <strong>AppView</strong>:
+		</p>
+		<section>
+			<h1>Directly</h1>
+			<p>
+				An <strong>AppView</strong> can offer public <strong>XRPC</strong> API end-points that do not require logging in.
+				For example, the <code>getProfile</code> request above went directly to <code>public.api.bsky.app</code>, with no login.
+			</p>
+		</section>
+		<section>
+			<h1>Through the User's PDS (Service Proxying)</h1>
+			<p>
+				When a user is logged in, an application usually sends its requests to the <em>user's</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and the <strong><abbr title="Personal Data Server">PDS</abbr></strong> forwards them to the <strong>AppView</strong>.
+				The specification calls this <strong>service proxying</strong>:
+			</p>
+			<blockquote>
+				<p>
+					The PDS acts as a generic proxy between clients and other atproto services. Clients can use an HTTP header to specify which service in the network they want the request forwarded to (eg, a specific AppView or Labeler service). The PDS will do some safety checks, then forward the request on with an inter-service authentication token (JWT, described above) issued and signed by the user's identity.
+				</p>
+			</blockquote>
+			<figure>
+				<pre>
+┌─────┐  request + atproto-proxy  ┌────────────┐  request + JWT  ┌─────────┐
+│ app │ ────────────────────────► │ user's PDS │ ──────────────► │ AppView │
+└─────┘                           └────────────┘                 └─────────┘
+				</pre>
+			</figure>
+			<p>
+				The application says which <strong>AppView</strong> it wants with the <code>atproto-proxy</code> <abbr title="HyperText Transfer Protocol">HTTP</abbr> header.
+				Its value is the <strong>AppView</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong>, a <code>#</code>, and a service identifier:
+			</p>
+			<figure>
+				<pre>
+atproto-proxy: did:web:api.bsky.app#bsky_appview
+               └───────┬──────────┘ └────┬─────┘
+                       │                 │
+                  AppView's DID     service identifier
+				</pre>
+			</figure>
+			<p>
+				The <strong><abbr title="Personal Data Server">PDS</abbr></strong> resolves that <strong><abbr title="decentralized identifier">DID</abbr></strong>, and looks in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> for the service with that identifier.
+				For example:
+			</p>
+			<figure>
+				<pre>
+$ curl https://api.bsky.app/.well-known/did.json
+{
+  "id": "did:web:api.bsky.app",
+  ...
+  "service": [
+    {
+      "id": "#bsky_notif",
+      "type": "BskyNotificationService",
+      "serviceEndpoint": "https://api.bsky.app"
+    },
+    {
+      "id": "#bsky_appview",
+      "type": "BskyAppView",
+      "serviceEndpoint": "https://api.bsky.app"
+    }
+  ]
+}
+				</pre>
+			</figure>
+			<p>
+				(The output has been trimmed and reformatted, to make it easier to read.)
+			</p>
+			<p>
+				(This is the same kind of lookup as finding a user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> — see: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+			</p>
+			<p>
+				The <strong><abbr title="Personal Data Server">PDS</abbr></strong> then forwards the request to the <code>serviceEndpoint</code>, adding a short-lived <abbr title="JSON Web Token">JWT</abbr>, signed with the user's key.
+				The <abbr title="JSON Web Token">JWT</abbr> tells the <strong>AppView</strong> <em>which user</em> the request is for:
+			</p>
+			<dl>
+				<dt><code>iss</code></dt>
+				<dd>
+					<p>
+						the user's <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+					</p>
+				</dd>
+
+				<dt><code>aud</code></dt>
+				<dd>
+					<p>
+						the <strong>AppView</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong> (and service identifier).
+						The <strong>AppView</strong> must check that this is <em>itself</em>.
+					</p>
+				</dd>
+
+				<dt><code>lxm</code></dt>
+				<dd>
+					<p>
+						the <strong>XRPC</strong> API end-point the token is for (such as <code>app.bsky.feed.getTimeline</code>).
+					</p>
+				</dd>
+
+				<dt><code>exp</code></dt>
+				<dd>
+					<p>
+						when it expires.
+						(The specification says 60 seconds is a good lifetime.)
+					</p>
+				</dd>
+			</dl>
+			<p>
+				The <strong>AppView</strong> checks the <abbr title="JSON Web Token">JWT</abbr>'s signature against the key in the user's <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+				That way, the <strong>AppView</strong> can give personalized answers — such as the user's own timeline — without the user ever logging in to the <strong>AppView</strong> itself.
+			</p>
+			<p>
+				This is also how a user (or their application) can <em>choose</em> an <strong>AppView</strong> — by changing the <code>atproto-proxy</code> header.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>AppViews and Moderation</h1>
+		<p>
+			An <strong>AppView</strong> is where moderation <em>labels</em> are usually applied to what users see.
+			The label specification says:
+		</p>
+		<blockquote>
+			<p>
+				Labels are often "hydrated" in to HTTP API responses by atproto services, such as AppViews.
+			</p>
+		</blockquote>
+		<p>
+			An application chooses which labelers it wants labels from with the <code>atproto-accept-labelers</code> <abbr title="HyperText Transfer Protocol">HTTP</abbr> header.
+			The <strong>AppView</strong> says which ones it applied with the <code>atproto-content-labelers</code> header.
+			(A <strong><abbr title="Personal Data Server">PDS</abbr></strong> passes these headers through when proxying.)
+		</p>
+		<p>
+			In the <code>atproto-accept-labelers</code> header, a labeler can also be marked with the <code>redact</code> parameter.
+			Then, for content with the special <code>!takedown</code> or <code>!suspend</code> labels, the <strong>AppView</strong> removes the content from its response entirely, rather than just labeling it.
+		</p>
+		<p>
+			This fits <strong><abbr title="AT-Protocol">ATProto</abbr></strong>'s idea that <em>speech</em> and <em>reach</em> are separate layers.
+			A user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts what they say (speech).
+			An <strong>AppView</strong> decides what to show, and to whom (reach).
+		</p>
+	</section>
+	<section>
+		<h1>AppViews and Spaces</h1>
+		<p>
+			Everything above is about <em>public</em> data.
+		</p>
+		<p>
+			There is a proposal to add permissioned (private) data to <strong><abbr title="AT-Protocol">ATProto</abbr></strong>, called <strong>spaces</strong>.
+			For <strong>spaces</strong>, there is no <strong>relay</strong> and no <strong>firehose</strong>.
+			Instead, an <strong>AppView</strong> that wants to show the data in a <strong>space</strong> pulls it directly from each user's <strong><a href="../repo-host/">repo host</a></strong> — which makes the <strong>AppView</strong> a <strong><a href="../syncer/">syncer</a></strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is an example, in the Go programming-language, of asking 2 different <strong>AppViews</strong> for the same profiles.
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+)
+
+// profile is the part of an app.bsky.actor.getProfile response that we print.
+type profile struct {
+	DID            string `json:"did"`
+	Handle         string `json:"handle"`
+	FollowersCount int    `json:"followersCount"`
+	FollowsCount   int    `json:"followsCount"`
+	PostsCount     int    `json:"postsCount"`
+}
+
+// getProfile asks an AppView for an account's profile.
+func getProfile(appview string, actor string) (profile, error) {
+	var p profile
+
+	response, err := http.Get(appview + "/xrpc/app.bsky.actor.getProfile?actor=" + url.QueryEscape(actor))
+	if nil != err {
+		return p, err
+	}
+	defer response.Body.Close()
+
+	if http.StatusOK != response.StatusCode {
+		return p, fmt.Errorf("HTTP status %d", response.StatusCode)
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&amp;p)
+	return p, err
+}
+
+func main() {
+	appviews := []string{
+		"https://public.api.bsky.app",
+		"https://api.blacksky.community",
+	}
+
+	for _, actor := range os.Args[1:] {
+		for _, appview := range appviews {
+			p, err := getProfile(appview, actor)
+			if nil != err {
+				fmt.Printf("%s %s → ERROR: %s\n", appview, actor, err)
+				continue
+			}
+			fmt.Printf("%s %s → followers=%d follows=%d posts=%d\n", appview, p.Handle, p.FollowersCount, p.FollowsCount, p.PostsCount)
+		}
+	}
+}
+			</code></pre>
+		</figure>
+		<p>
+			Running it gave:
+		</p>
+		<figure>
+			<pre>
+$ go run . reiver.blacksky.team bnewbold.net
+https://public.api.bsky.app reiver.blacksky.team → followers=290 follows=301 posts=395
+https://api.blacksky.community reiver.blacksky.team → followers=194 follows=301 posts=395
+https://public.api.bsky.app bnewbold.net → followers=21061 follows=1493 posts=8962
+https://api.blacksky.community bnewbold.net → followers=11869 follows=1492 posts=8962
+			</pre>
+		</figure>
+		<p>
+			(These numbers are from the time of writing, and will have changed.)
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>AppView</strong>:
+		</p>
+		<ol>
+			<li>is the back-end of an application,</li>
+			<li>reads the network's data (usually from a <strong>relay</strong>'s <strong>firehose</strong>), and builds an index from it,</li>
+			<li>computes things no single <strong><abbr title="Personal Data Server">PDS</abbr></strong> can — such as follower counts, like counts, feeds, and search,</li>
+			<li>is not where users' data lives, and does not receive writes,</li>
+			<li>is reached directly, or through the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> with the <code>atproto-proxy</code> header, and</li>
+			<li>is “just one view of the network” — there can be more than one, and they can give different answers.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/guides/glossary">AT Protocol Glossary</a></li>
+			<li><a href="https://atproto.com/guides/overview">AT Protocol Overview</a></li>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol Specification: HTTP API (XRPC)</a> (see “Service Proxying” and “Inter-Service Authentication”)</li>
+			<li><a href="https://atproto.com/specs/label">AT Protocol Specification: Labels</a></li>
+			<li><a href="https://atproto.com/guides/moderation">AT Protocol Guide: Moderation</a></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
