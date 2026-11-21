@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Space Mirror: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="atproto spaces" />
+<meta name="category" content="cache" />
+<meta name="category" content="mirror" />
+<meta name="category" content="open social web" />
+<meta name="category" content="permissioned data" />
+<meta name="category" content="private data" />
+<meta name="category" content="social web" />
+<meta name="category" content="space mirror" />
+<meta name="category" content="spaces" />
+<meta name="category" content="sync" />
+<meta name="category" content="syncer" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Space Mirror</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Space Mirror</h1>
+			<p>
+				one syncer that keeps a copy of a permissioned “space”, and serves it to your other services
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>space mirror</strong> is an internal service that does 2 things:
+	</p>
+	<ol>
+		<li>it is a <strong><a href="../syncer/">syncer</a></strong> — it keeps its own copy of a <strong>space</strong> up-to-date, by pulling from the <strong>repo hosts</strong>, and</li>
+		<li>it serves that copy to <em>your own</em> other services, using the same kind of <strong>XRPC</strong> API end-points that a <strong>repo host</strong> has — <code>getRecord</code>, <code>listRecords</code>, <code>getBlob</code>, <code>listBlobs</code>, <code>getLatestCommit</code>, <code>getRepo</code>, and <code>listRepoOps</code>.</li>
+	</ol>
+	<p>
+		<mark>A <strong>space mirror</strong> is <em>not</em> a <strong>repo host</strong>, and it is <em>not</em> a public service.
+		To the rest of the network, it is just one <strong>syncer</strong>.
+		Only <em>your own</em> services can call its <strong>repo host</strong>-style end-points — and they trust it, because they are part of the same system.</mark>
+	</p>
+	<p>
+		<strong>Note!</strong>
+		<strong>Spaces</strong> are a <em>proposal</em> — <a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">proposal 0016, “Atproto Spaces”</a>.
+		They are not (yet) part of the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> specification.
+		The proposal itself says:
+	</p>
+	<blockquote>
+		<p>
+			This is a proposal, not the final specification. Details, terminology, and behaviors are all likely to change.
+		</p>
+	</blockquote>
+	<p>
+		And, a <strong>space mirror</strong> is not in the proposal <em>at all</em>.
+		It is not a protocol role.
+		It is a way of <em>building</em> an application on top of the protocol — splitting the <strong>syncer</strong> part of an application out into its own service.
+		This article describes the proposal as of November 2026.
+	</p>
+	<section>
+		<h1>Why Have a Space Mirror?</h1>
+		<p>
+			A real application is often several services.
+			For example, an application for private forums might have:
+		</p>
+		<ul>
+			<li>an <strong><a href="../appview/">AppView</a></strong> that shows the forums to users,</li>
+			<li>a search indexer,</li>
+			<li>a notification service, and</li>
+			<li>moderation tools.</li>
+		</ul>
+		<p>
+			All of them need the data in the <strong>space</strong>.
+			If each one were its own <strong>syncer</strong>, then each one would need its own <strong>space credentials</strong>, its own notification registrations, and its own copy of every <strong>space repo</strong> — pulled separately from every user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+		</p>
+		<p>
+			That matters, because <strong>spaces</strong> have no <strong><a href="../relay/">relays</a></strong>.
+			Every <strong>syncer</strong> pulls directly from the users' <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>.
+			The proposal says:
+		</p>
+		<blockquote>
+			<p>
+				The one major difference is the lack of relays. Applications sync space repos directly from PDSes rather than relying on an intermediary service, which places additional load on PDSes.
+			</p>
+		</blockquote>
+		<p>
+			And:
+		</p>
+		<blockquote>
+			<p>
+				Second, sync load scales with the number of applications syncing a space, not the number of end users. An application serving many users pulls each repo once and fans it out to them from its own copy, which keeps the number of distinct syncers per repo relatively low.
+			</p>
+		</blockquote>
+		<p>
+			A <strong>space mirror</strong> is that idea, applied to an application made of several services.
+			The application pulls each <strong>space repo</strong> <em>once</em> (through the <strong>space mirror</strong>), and fans it out to its own services from that one copy.
+		</p>
+		<figure>
+			<pre>
+   the network                                                your system
+
+┌───────────────┐                                         ┌─────────────────┐
+│   space host  │◄────┐                            ┌──────│     AppView     │
+└───────────────┘     │                            │      └─────────────────┘
+                      │      ┌──────────────┐      │      ┌─────────────────┐
+                      ├──────│ space mirror │◄─────┼──────│  search indexer │
+                      │      └──────────────┘      │      └─────────────────┘
+┌───────────────┐     │                            │      ┌─────────────────┐
+│   repo hosts  │◄────┘                            └──────│  notifications  │
+└───────────────┘                                         └─────────────────┘
+
+pulls the space, as one syncer                    serves it, internally only
+			</pre>
+		</figure>
+		<p>
+			(The arrows point at whoever is being called.)
+		</p>
+	</section>
+	<section>
+		<h1>About the Name</h1>
+		<p>
+			Why “mirror”?
+			A <em>mirror</em> keeps a full copy of something, keeps that copy up-to-date, and answers requests from it — usually through the same kind of interface as the original.
+			That is exactly what a <strong>space mirror</strong> does.
+		</p>
+		<p>
+			Why “space”?
+			Because what it keeps a copy of is a <strong>space</strong>.
+			(In English, an “<em>X</em> mirror” is a mirror <em>of</em> <em>X</em> — like a “Debian mirror”.)
+		</p>
+		<p>
+			It is <em>not</em> a <em>proxy</em>.
+			A proxy passes each request on to the real server, as it happens.
+			(<abbr title="AT-Protocol">ATProto</abbr> uses the word this way — <em>service proxying</em>, with the <code>atproto-proxy</code> header, forwards a request to another service.
+			See: <a href="../appview/"><abbr title="AT-Protocol">ATProto</abbr> AppView</a>.)
+			A <strong>space mirror</strong> never passes a request on.
+			It answers every request from its own copy, which it keeps up-to-date ahead of time.
+		</p>
+		<p>
+			Two things the name does <em>not</em> say:
+		</p>
+		<ul>
+			<li>
+				<strong>it is internal.</strong>
+				Many mirrors (for example, software mirrors) are public.
+				A <strong>space mirror</strong> must not be.
+				(See “Why It Must Stay Internal”, below.)
+			</li>
+			<li>
+				<strong>it copies from many places.</strong>
+				A <strong>space</strong> is spread across every member's <strong>repo host</strong>.
+				So, a <strong>space mirror</strong> is not a copy of one server — it gathers many users' <strong>space repos</strong> into one place.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Two Faces</h1>
+		<p>
+			A <strong>space mirror</strong> has 2 faces — one facing the network, and one facing your own services.
+		</p>
+		<section>
+			<h1>Facing the Network: a Syncer</h1>
+			<p>
+				Toward the network, a <strong>space mirror</strong> is an ordinary <strong>syncer</strong>.
+				It does everything a <strong>syncer</strong> does:
+			</p>
+			<ol>
+				<li>gets a <strong>space credential</strong> from the <strong><a href="../space-host/">space host</a></strong>, with <code>com.atproto.space.authorizeSpaceSync</code> (and gets a new one before it expires),</li>
+				<li>finds out who has written to the <strong>space</strong>, with <code>com.atproto.space.listWriters</code>,</li>
+				<li>pulls each <strong>space repo</strong> from its <strong><a href="../repo-host/">repo host</a></strong>, with <code>com.atproto.space.listRepoOps</code> (or <code>getRepo</code>, to start from nothing),</li>
+				<li>registers for, and receives, notifications (<code>com.atproto.space.notifySpaceUpdate</code> and <code>confirmRegistration</code>), and</li>
+				<li>checks that the data is real — the <abbr title="Message Authentication Code">MAC</abbr>s and the digests.</li>
+			</ol>
+			<p>
+				(For the details, see: <a href="../syncer/"><abbr title="AT-Protocol">ATProto</abbr> Syncer</a>.)
+			</p>
+			<p>
+				Note that the notification end-points must be reachable <em>from the internet</em>, since the <strong>space host</strong> calls them.
+				It is only the <em>other</em> face that is internal.
+			</p>
+		</section>
+		<section>
+			<h1>Facing Your Services: Like a Repo Host</h1>
+			<p>
+				Toward your own services, a <strong>space mirror</strong> serves its copy through <strong>repo host</strong>-style end-points:
+			</p>
+			<figure>
+				<table>
+					<thead>
+						<tr>
+							<th>End-Point</th>
+							<th>What It Returns</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>getRecord</code></td>
+							<td>a single record</td>
+						</tr>
+						<tr>
+							<td><code>listRecords</code></td>
+							<td>the records in a <strong>space repo</strong></td>
+						</tr>
+						<tr>
+							<td><code>getBlob</code></td>
+							<td>a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> (an image, video, etc)</td>
+						</tr>
+						<tr>
+							<td><code>listBlobs</code></td>
+							<td>the <abbr title="Content IDentifier">CID</abbr>s of the <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> a <strong>space repo</strong>'s records refer to</td>
+						</tr>
+						<tr>
+							<td><code>getLatestCommit</code></td>
+							<td>the current <strong>commit</strong> of a <strong>space repo</strong> (as of the last sync)</td>
+						</tr>
+						<tr>
+							<td><code>getRepo</code></td>
+							<td>a whole <strong>space repo</strong></td>
+						</tr>
+						<tr>
+							<td><code>listRepoOps</code></td>
+							<td>a <strong>space repo</strong>'s changes since a given revision</td>
+						</tr>
+					</tbody>
+				</table>
+			</figure>
+			<p>
+				(For what each of these does on a real <strong>repo host</strong>, see: <a href="../../space/xrpc/"><abbr title="AT-Protocol">ATProto</abbr> Spaces XRPC API End-Points</a>.)
+			</p>
+			<p>
+				In practice, your services will probably need 2 more things, too:
+			</p>
+			<ul>
+				<li>
+					<strong>which space repos exist</strong> — something like <code>listWriters</code>.
+					On a real network, that comes from the <strong>space host</strong>.
+					But, your services should get it from the <strong>space mirror</strong> — so that it matches the copy they are reading.
+				</li>
+				<li>
+					<strong>when something changes</strong> — so your services do not have to keep polling.
+					This can be anything you like (a message queue, webhooks, etc), since it is internal.
+				</li>
+			</ul>
+		</section>
+	</section>
+	<section>
+		<h1>How It Differs from a Real Repo Host</h1>
+		<p>
+			The end-points may look the same.
+			But, they do not promise the same things:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th></th>
+						<th>Repo Host</th>
+						<th>Space Mirror</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>whose data</td>
+						<td>its own accounts'</td>
+						<td>everyone's in the <strong>space</strong> (a copy)</td>
+					</tr>
+					<tr>
+						<td>source of truth?</td>
+						<td>yes</td>
+						<td>no — it may be behind</td>
+					</tr>
+					<tr>
+						<td>found through</td>
+						<td>the author's <strong><abbr title="decentralized identifier">DID</abbr> document</strong> (<code>#atproto_pds</code>)</td>
+						<td>your own configuration</td>
+					</tr>
+					<tr>
+						<td>who may call it</td>
+						<td>anyone with a <strong>space credential</strong> (or OAuth)</td>
+						<td>only your own services</td>
+					</tr>
+					<tr>
+						<td><abbr title="Message Authentication Code">MAC</abbr>s</td>
+						<td>yes</td>
+						<td>no</td>
+					</tr>
+					<tr>
+						<td>accepts writes?</td>
+						<td>yes (as a <abbr title="Personal Data Server">PDS</abbr>)</td>
+						<td>no</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			The missing <abbr title="Message Authentication Code">MAC</abbr>s are the important one.
+			A <abbr title="Message Authentication Code">MAC</abbr> is computed with the author's <code>#atproto_kem</code> private key — and the proposal says “The repo host holds the private key.”
+			A <strong>space mirror</strong> does not have it, so it <em>cannot</em> make a valid <abbr title="Message Authentication Code">MAC</abbr>.
+		</p>
+		<p>
+			That is fine <em>internally</em>.
+			The <strong>space mirror</strong> checks the <abbr title="Message Authentication Code">MAC</abbr>s when it pulls from the real <strong>repo hosts</strong>.
+			After that, your services trust the <strong>space mirror</strong> — the same way they would trust their own database.
+		</p>
+	</section>
+	<section>
+		<h1>Why It Must Stay Internal</h1>
+		<p>
+			It might be tempting to let <em>other</em> applications use a <strong>space mirror</strong> too.
+			That runs into problems:
+		</p>
+		<dl>
+			<dt>nobody can check its data</dt>
+			<dd>
+				<p>
+					Without <abbr title="Message Authentication Code">MAC</abbr>s, an outside application would have to just trust it.
+					And, that is on purpose.
+					The proposal says permissioned data “should not carry proof of authorship that survives a leak outside its access boundary, so space repos do not use signatures.”
+					Public data is signed, so anyone can pass it on and anyone can check it.
+					<strong>Space</strong> data is not.
+				</p>
+			</dd>
+
+			<dt>nobody can find it</dt>
+			<dd>
+				<p>
+					Applications find a <strong>space repo</strong> by resolving the author's <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <code>#atproto_pds</code>.
+					There is no way to advertise a copy somewhere else.
+				</p>
+			</dd>
+
+			<dt>it misses revocations</dt>
+			<dd>
+				<p>
+					A <strong>space host</strong> sends <code>com.atproto.space.notifyCredentialsRevoked</code> to the “repo hosts serving repos in the space”.
+					It does not know about a <strong>space mirror</strong>.
+					So, a <strong>space mirror</strong> checking outside applications' <strong>space credentials</strong> would keep accepting revoked ones until they expire (up to 60 minutes).
+				</p>
+			</dd>
+
+			<dt>it is handed replayable credentials</dt>
+			<dd>
+				<p>
+					When a <strong>space credential</strong> is used, the <abbr title="HyperText Transfer Protocol">HTTP</abbr> Message Signature covers only the <code>Authorization</code> and <code>Atproto-Space-Audience</code> headers — and when syncing, the audience is the <em>repo owner's</em> <strong><abbr title="decentralized identifier">DID</abbr></strong>, not the server's.
+					The proposal says “Replay against the same audience is allowed.”
+					So, every request an outside application sent to a <strong>space mirror</strong> could be replayed against the real <strong>repo host</strong>, until it expires.
+				</p>
+			</dd>
+
+			<dt>it goes against the design</dt>
+			<dd>
+				<p>
+					The proposal says “Public broadcast is built for open distribution (signed, archival, rebroadcastable) while atproto spaces are built for party-to-party transmission within an access boundary.”
+					The <strong>space authority</strong> let <em>your application</em> sync the <strong>space</strong>.
+					That is not the same as letting your application pass it on to others.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			None of these are problems when every caller is part of <em>your own</em> application.
+		</p>
+	</section>
+	<section>
+		<h1>Responsibilities</h1>
+		<p>
+			A <strong>space mirror</strong> has every responsibility a <strong>syncer</strong> has.
+			But, because other services serve users from its copy, it also has to make sure those responsibilities reach <em>them</em>.
+		</p>
+		<section>
+			<h1>Keep It Internal</h1>
+			<p>
+				Do not expose the <strong>repo host</strong>-style end-points to the internet, and do not list them in any <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+				Protect them with internal authentication — a private network, <abbr title="mutual Transport Layer Security">mTLS</abbr>, an internal token, etc.
+			</p>
+		</section>
+		<section>
+			<h1>One Credential per Space, Not per Service</h1>
+			<p>
+				The <strong>space mirror</strong> should hold one <strong>space credential</strong> and one notification registration per <strong>space</strong>, for your whole application.
+				That is the point — one copy, pulled once.
+			</p>
+			<p>
+				It also needs whatever <code>authorizeSpaceSync</code> requires for that <strong>space</strong>.
+				That might be a <strong>delegation token</strong> (made by a user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>, through that user's OAuth session with your application), a <strong>client attestation</strong> (signed with your application's client key), or both.
+				The proposal says one user's session is enough:
+			</p>
+			<blockquote>
+				<p>
+					An application serving several users of a space does not necessarily need to maintain a space credential for each user. It may obtain its credential using any one user's session.
+				</p>
+			</blockquote>
+			<p>
+				So, the <strong>space mirror</strong> needs a way to get delegation tokens from whichever of your services holds your users' OAuth sessions.
+			</p>
+		</section>
+		<section>
+			<h1>Per-User Access Stays with Your Services</h1>
+			<p>
+				A <strong>space credential</strong> lets your application <em>sync</em> a <strong>space</strong>.
+				It does not say which of your users may <em>see</em> it.
+				The proposal puts that on “the syncing application” — which, now, means your services that face users.
+				They must still check, for each user, whether that user may see each <strong>space</strong>.
+			</p>
+		</section>
+		<section>
+			<h1>Know What the Answer Means</h1>
+			<p>
+				Each time the <strong>space mirror</strong> calls <code>authorizeSpaceSync</code> (to renew its <strong>space credential</strong>), it should do one of 3 things, depending on the answer:
+			</p>
+			<figure>
+				<table>
+					<thead>
+						<tr>
+							<th>Answer</th>
+							<th>What to Do</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>a new <strong>space credential</strong></td>
+							<td>keep serving</td>
+						</tr>
+						<tr>
+							<td><code>SpaceDeleted</code></td>
+							<td><em>delete</em> every copy of the <strong>space</strong>'s data — including derived data, and including your services' copies</td>
+						</tr>
+						<tr>
+							<td>access denied</td>
+							<td><em>stop serving</em> the <strong>space</strong></td>
+						</tr>
+						<tr>
+							<td>anything else (a network error, etc)</td>
+							<td>keep the data — the proposal says such a failure “says nothing about the space”</td>
+						</tr>
+					</tbody>
+				</table>
+			</figure>
+			<p>
+				(If the <strong>space authority</strong>'s account is taken down or deactivated, the <strong>space host</strong> answers with <code>RepoTakendown</code> or <code>RepoDeactivated</code>.
+				The proposal says that “is not a signal for syncers to drop the space's data”.
+				But, it should not be <em>served</em> — the proposal also says “inactivation of an account impacts all data from all accounts in spaces under their authority”.)
+			</p>
+		</section>
+		<section>
+			<h1>Pass Changes Downstream</h1>
+			<p>
+				When the <strong>space mirror</strong> deletes a <strong>space</strong>, clears a <strong>space repo</strong>, removes a writer, or sees an account's status change, it should tell your services.
+				Otherwise, copies further downstream (search indexes, caches, etc) keep serving data that should be gone.
+			</p>
+		</section>
+		<section>
+			<h1>Follow the Firehose</h1>
+			<p>
+				Account status (active, deactivated, taken down, deleted) is announced on the firehose, not through <strong>spaces</strong>.
+				The proposal says that even an application that syncs only <strong>spaces</strong> “still needs to subscribe to a firehose to receive <code>#account</code> and <code>#identity</code> events.”
+				So, the <strong>space mirror</strong> should subscribe to one (from a <strong><a href="../relay/">relay</a></strong>), and:
+			</p>
+			<ul>
+				<li>stop serving a deactivated or taken down account's data,</li>
+				<li>delete a deleted account's data, and</li>
+				<li>notice when an account's <code>#atproto_kem</code> key or <strong><abbr title="Personal Data Server">PDS</abbr></strong> changes.</li>
+			</ul>
+		</section>
+		<section>
+			<h1>Respect Takedown Labels</h1>
+			<p>
+				The proposal says that “space authorities may publish <code>!takedown</code> labels to remove content from their spaces, and synchronizing services and client apps should respect such takedown labels.”
+				Those labels are records in the <strong>space</strong>, so the <strong>space mirror</strong> will have them.
+				Decide whether the <strong>space mirror</strong> itself stops serving the labeled content, or whether your services do.
+				(See: <a href="../labeler/"><abbr title="AT-Protocol">ATProto</abbr> Labeler</a>.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is the <em>internal</em> face of a <strong>space mirror</strong>, in Go.
+			It serves <code>getRecord</code> from a local copy — and keeps track of which <strong>spaces</strong> it may serve, and which accounts are not active.
+			(The syncer face, which fills in the local copy, is not shown.
+			See: <a href="../syncer/"><abbr title="AT-Protocol">ATProto</abbr> Syncer</a>.)
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"crypto/subtle"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+)
+
+// A record, as pulled (and verified) by the syncer side.
+type record struct {
+	CID   string          `json:"cid"`
+	Value json.RawMessage `json:"value"`
+}
+
+// The local copy. The syncer side (not shown) fills it in and keeps it up-to-date.
+type store struct {
+	mu       sync.RWMutex
+	serving  map[string]bool   // space URI → may we serve it?
+	inactive map[string]string // account DID → "RepoDeactivated", "RepoTakendown", etc
+	records  map[string]record // record URI → record
+}
+
+func newStore() *store {
+	return &amp;store{
+		serving:  map[string]bool{},
+		inactive: map[string]string{},
+		records:  map[string]record{},
+	}
+}
+
+// Called by the syncer side when authorizeSpaceSync answers SpaceDeleted.
+func (s *store) deleteSpace(space string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.serving, space)
+	for uri := range s.records {
+		if strings.HasPrefix(uri, space+"/") {
+			delete(s.records, uri)
+		}
+	}
+}
+
+// Called by the syncer side when authorizeSpaceSync succeeds (true) or is denied (false).
+func (s *store) setServing(space string, serving bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.serving[space] = serving
+}
+
+// Called by the syncer side on #account events from the firehose.
+// status is "" for an active account.
+func (s *store) setAccountStatus(did string, status string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if "" == status {
+		delete(s.inactive, did)
+		return
+	}
+	s.inactive[did] = status
+}
+
+func (s *store) put(uri string, rec record) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.records[uri] = rec
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(value)
+}
+
+func writeError(w http.ResponseWriter, status int, name string, message string) {
+	writeJSON(w, status, map[string]string{"error": name, "message": message})
+}
+
+// Only our own internal services may call us.
+func internalOnly(token string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		given := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if "" == token || 1 != subtle.ConstantTimeCompare([]byte(given), []byte(token)) {
+			writeError(w, http.StatusUnauthorized, "AuthRequired", "internal services only")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (s *store) getRecord(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	space, repo := q.Get("space"), q.Get("repo")
+	uri := space + "/" + repo + "/" + q.Get("collection") + "/" + q.Get("rkey")
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.serving[space] {
+		writeError(w, http.StatusNotFound, "SpaceNotFound", "space not available")
+		return
+	}
+	if status, found := s.inactive[repo]; found {
+		writeError(w, http.StatusBadRequest, status, "account is not active")
+		return
+	}
+	rec, found := s.records[uri]
+	if !found {
+		writeError(w, http.StatusNotFound, "RecordNotFound", "record not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"uri": uri, "cid": rec.CID, "value": rec.Value})
+}
+
+func main() {
+	s := newStore()
+	// ... start the syncer side here, which fills in s ...
+
+	token := os.Getenv("INTERNAL_TOKEN")
+	http.HandleFunc("/xrpc/com.atproto.space.getRecord", internalOnly(token, s.getRecord))
+	log.Fatal(http.ListenAndServe("127.0.0.1:3000", nil))
+}</code>
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				It only listens on <code>127.0.0.1</code>, and requires an internal token (from the <code>INTERNAL_TOKEN</code> environment variable).
+				It refuses everything if no token is set.
+			</li>
+			<li>
+				It returns no <abbr title="Message Authentication Code">MAC</abbr>, and does not ask for a <strong>space credential</strong>.
+			</li>
+			<li>
+				The syncer face calls <code>setServing</code> after each <code>authorizeSpaceSync</code> (<code>true</code> for a new credential, <code>false</code> for access denied), <code>deleteSpace</code> on <code>SpaceDeleted</code>, and <code>setAccountStatus</code> on each firehose <code>#account</code> event.
+			</li>
+			<li>
+				The parameter names (<code>space</code>, <code>repo</code>, <code>collection</code>, <code>rkey</code>), the <code>SpaceNotFound</code> error, and the response shape are this article's choices.
+				There are no published lexicons for <strong>spaces</strong> yet — and, since this is internal, they are yours to decide anyway.
+				(<code>RepoDeactivated</code> and <code>RecordNotFound</code> are the error names used for public repos — and the proposal says <strong>space</strong> sync errors “should have the same error names as for public repo sync responses”.)
+			</li>
+			<li>
+				A record's <abbr title="Uniform Resource Identifier">URI</abbr> is the <strong>space</strong>'s <abbr title="Uniform Resource Identifier">URI</abbr>, then the author's <strong><abbr title="decentralized identifier">DID</abbr></strong>, collection, and record key — for example, <code>at://did:example:forum/space/com.atmoboards.forum/general/did:example:alice/com.atmoboards.thread/3mwcj3b6uak2f</code> (an example from the proposal).
+			</li>
+			<li>
+				A real one would use a database rather than memory, and would serve the other 6 end-points too.
+			</li>
+		</ul>
+		<p>
+			This code was tested with Go's <code>httptest</code>, by stepping a record through: not yet authorized (<code>404</code>), authorized (<code>200</code>), wrong token (<code>401</code>), account deactivated (<code>400 RepoDeactivated</code>), reactivated (<code>200</code>), access denied (<code>404</code>), re-authorized (<code>200</code>), and <strong>space</strong> deleted (<code>404</code>, with no records left).
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>space mirror</strong>:
+		</p>
+		<ol>
+			<li>is an internal service — not a protocol role, and not in the proposal,</li>
+			<li>is an ordinary <strong>syncer</strong> to the rest of the network (one credential, one registration, one copy, per <strong>space</strong>),</li>
+			<li>serves its copy to your own services, through <strong>repo host</strong>-style end-points,</li>
+			<li>cannot make <abbr title="Message Authentication Code">MAC</abbr>s, is not the source of truth, and cannot be found through <strong><abbr title="decentralized identifier">DID</abbr> documents</strong> — which is why it must stay internal,</li>
+			<li>leaves per-user access checks to your services, and</li>
+			<li>must pass deletions, access changes, and account status changes on to your services.</li>
+		</ol>
+		<p>
+			Again, <strong>spaces</strong> are a <em>proposal</em>.
+			Details are likely to change.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> (as of commit <code>b54ec68</code>, November 12th, 2026) — especially the “Introduction”, “Credential flow”, “Credential expiration and revocation”, “Presenting a space credential”, “Commit authenticity”, “Space deletion”, “Moderation”, “Access control in applications”, “Scaling”, and “Account lifecycle” sections</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>

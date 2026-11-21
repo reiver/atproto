@@ -376,6 +376,10 @@ Signature: sig=:wNmSUA...:
 				To read <em>other</em> users' <strong>space repos</strong>, an application needs a <strong>space credential</strong>.
 			</li>
 			<li>
+				An application may also serve these end-points <em>internally</em>, from its own synced copy, to its own services — see: <a href="../../service/space-mirror/"><abbr title="AT-Protocol">ATProto</abbr> Space Mirror</a>.
+				(That is not a <strong>repo host</strong>: it has no <abbr title="Message Authentication Code">MAC</abbr>s, and is not the source of truth.)
+			</li>
+			<li>
 				When called with a <strong>space credential</strong>, the end-points that return a <strong>commit</strong> (<code>getLatestCommit</code>, <code>getRepo</code>, <code>listRepoOps</code>) or a single record (<code>getRecord</code>) require a <abbr title="Message Authentication Code">MAC</abbr> — the <strong>syncer</strong> asks for one with an <code>Accept-Signature</code> header, and the <strong>repo host</strong> returns it in the <abbr title="HyperText Transfer Protocol">HTTP</abbr> headers — so the <strong>syncer</strong> can check the data really came from the <strong>repo host</strong>.
 			</li>
 		</ul>
