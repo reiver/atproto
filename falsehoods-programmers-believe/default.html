@@ -510,11 +510,28 @@ equipment.rpg.item
 					“Record deletion is supported without leaving a trace or "tombstone" of previous contents.”
 				</p>
 			</li>
+			<li>
+				<p><strong>Deleting a record removes it from the Internet.</strong></p>
+				<p>
+					Deleting a record removes it from the user's repository.
+					But, by then, copies may already be elsewhere — the creation went out on the <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s firehose, and <strong><a href="../service/relay/">relays</a></strong>, <strong><a href="../service/appview/">AppViews</a></strong>, feed generators, search indexes, backups, and anyone else watching may have kept it.
+				</p>
+				<p>
+					The deletion goes out on the firehose too, and the specifications <em>expect</em> other services to follow it.
+					The accounts specification says “When accounts remove records from their public repositories, hosting services should remove public access to that content.”
+					And, the sync specification says mirrors should “respect repository updates (eg, record deletion) … in a timely manner (within seconds or minutes)”.
+					But, “should” is not a guarantee — nothing forces every service to comply, and a copy someone else kept (or a screenshot) is out of the user's control.
+				</p>
+				<p>
+					(And, since the data was signed, such a copy can still be shown to be genuine.
+					Treat anything written to a public repository as published.)
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="43">
+		<ol start="44">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -567,7 +584,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="50">
+		<ol start="51">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -606,7 +623,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="55">
+		<ol start="56">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -690,7 +707,7 @@ equipment.rpg.item
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="64">
+		<ol start="65">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -802,7 +819,7 @@ equipment.rpg.item
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="72">
+		<ol start="73">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
@@ -855,6 +872,7 @@ equipment.rpg.item
 			<li><a href="https://github.com/did-method-plc/did-method-plc"><code>did:plc</code> method specification</a> (v0.3.0, December 2025) — identifier syntax</li>
 			<li><a href="https://atproto.com/specs/record-key">AT Protocol: Record Key</a></li>
 			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a></li>
+			<li><a href="https://atproto.com/specs/sync">AT Protocol: Sync</a> — mirrors and deletion</li>
 			<li><a href="https://atproto.com/specs/data-model">AT Protocol: Data Model</a></li>
 			<li><a href="https://atproto.com/guides/data-validation">AT Protocol: Data Validation</a> (guide) — <abbr title="Unicode Transformation Format 8-bit">UTF-8</abbr>, empty keys, 53-bit integers, size and nesting limits</li>
 			<li><a href="https://atproto.com/specs/lexicon">AT Protocol: Lexicon</a></li>
