@@ -408,6 +408,32 @@ equipment.rpg.item
 				</p>
 			</li>
 			<li>
+				<p><strong>Record keys are always <abbr title="Timestamp Identifier">TID</abbr>s.</strong></p>
+				<p>
+					<abbr title="Timestamp Identifier">TID</abbr>s (like <code>3n2opitxdyc2j</code>) are the most common, but each record type's <strong><a href="../lexicon/">lexicon</a></strong> says which kind of record key it uses.
+					The record key specification defines 4 kinds:
+				</p>
+				<ul>
+					<li><code>tid</code> — a timestamp identifier (posts, likes, follows, etc),</li>
+					<li><code>literal:&lt;value&gt;</code> — one fixed key, so there is only one record in the collection; usually <code>literal:self</code> (for example, <code>app.bsky.actor.profile/self</code>),</li>
+					<li><code>nsid</code> — the key must be an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> (published lexicons use the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> as the record key), and</li>
+					<li><code>any</code> — any valid record key, such as a domain name, or a number.</li>
+				</ul>
+				<p>
+					Some other things about record keys:
+				</p>
+				<ul>
+					<li>They have their own syntax: 1 to 512 characters, using only letters, digits, and <code>.</code> <code>-</code> <code>_</code> <code>:</code> <code>~</code> — and not <code>.</code> or <code>..</code>.</li>
+					<li>They are case-sensitive (though “it is a recommended practice to use all-lower-case record keys”).</li>
+					<li>The same <abbr title="Timestamp Identifier">TID</abbr> can be used in 2 different collections, to show the records are related (a “"sidecar" extension record”).</li>
+					<li>Software should treat record keys as plain strings — the specification discourages, for example, decoding <abbr title="Timestamp Identifier">TID</abbr>s into numbers for use as a database key.</li>
+					<li>More kinds of record key may be added in the future.</li>
+				</ul>
+				<p>
+					(See: <a href="../record/"><abbr title="AT-Protocol">ATProto</abbr> Record</a>.)
+				</p>
+			</li>
+			<li>
 				<p><strong>A <code>tid</code> record key tells you when the record was created.</strong></p>
 				<p>
 					“Record keys are "user-controlled data" and may be arbitrarily selected by hostile accounts.”
@@ -488,7 +514,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="42">
+		<ol start="43">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -541,7 +567,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="49">
+		<ol start="50">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -580,7 +606,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="54">
+		<ol start="55">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -664,7 +690,7 @@ equipment.rpg.item
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="63">
+		<ol start="64">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -776,7 +802,7 @@ equipment.rpg.item
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="71">
+		<ol start="72">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
