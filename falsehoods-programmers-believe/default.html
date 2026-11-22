@@ -111,6 +111,17 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>Even if a user's handle is not a <code>.bsky.social</code> handle now, their <em>first</em> handle was.</strong></p>
+				<p>
+					A user's first handle is whatever they got when their account was created — on whichever <strong><abbr title="Personal Data Server">PDS</abbr></strong> they signed up with.
+					<code>com.atproto.server.createAccount</code> just takes a “Requested handle for the account”, and each <strong><abbr title="Personal Data Server">PDS</abbr></strong> offers its own domains.
+					So, someone who signed up on <code>blacksky.app</code> might start out as <code>alice.myatproto.social</code> — and never have had a <code>.bsky.social</code> handle at all.
+				</p>
+				<p>
+					You can see this in a <strong><abbr title="decentralized identifier">DID</abbr></strong>'s audit log on <code>plc.directory</code> (<code>https://plc.directory/&lt;did&gt;/log/audit</code>) — the very first operation (the one that created the <strong><abbr title="decentralized identifier">DID</abbr></strong>) shows the first handle, and the first <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+				</p>
+			</li>
+			<li>
 				<p><strong>A handle is a third-level domain — like <code>alice.bsky.social</code>, <code>alice.blacksky.app</code>, or <code>alice.myatproto.social</code>.</strong></p>
 				<p>
 					A handle can have any number of segments, as long as there are at least 2.
@@ -145,7 +156,7 @@
 	</section>
 	<section>
 		<h1>DIDs</h1>
-		<ol start="10">
+		<ol start="11">
 			<li>
 				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
 				<p>
@@ -195,7 +206,7 @@
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="16">
+		<ol start="17">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -244,7 +255,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="22">
+		<ol start="23">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -316,7 +327,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="32">
+		<ol start="33">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -369,7 +380,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="39">
+		<ol start="40">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -408,7 +419,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="44">
+		<ol start="45">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -462,7 +473,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="50">
+		<ol start="51">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
