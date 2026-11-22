@@ -68,7 +68,7 @@
 				<p><strong>So, a handle is a good database key for a user.</strong></p>
 				<p>
 					Use the <strong><abbr title="decentralized identifier">DID</abbr></strong>.
-					Store the handle only for display — and re-check it.
+					Store the handle only for display (cosmetic) purposes — and re-check what each <strong><abbr title="decentralized identifier">DID</abbr></strong>'s handle is from time to time.
 				</p>
 				<p>
 					But, you need to <mark>normalize</mark> the <strong><abbr title="decentralized identifier">DID</abbr></strong> before using it.
@@ -78,8 +78,10 @@
 			<li>
 				<p><strong>Every handle ends in <code>.bsky.social</code>.</strong></p>
 				<p>
-					Any domain can be a handle.
-					And, other <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> hand out their own — <code>blacksky.app</code>, for example, offers <code>.blacksky.app</code>, <code>.myatproto.social</code>, <code>.latinsky.app</code>, and others.
+					Any Internet domain can be a handle.
+					And, other <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> hand out their own
+					—
+					the <code>blacksky.app</code> <strong><abbr title="Personal Data Server">PDS</abbr></strong>, for example, offers <code>.blacksky.app</code>, <code>.myatproto.social</code>, <code>.cryptoanarchy.social</code>, and others.
 				</p>
 			</li>
 			<li>
@@ -283,19 +285,19 @@
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
-					It is a <em>name</em> — a reversed domain plus a name.
+					It is a <em>name</em> — a reversed Internet domain plus a name.
 					(See: <a href="../nsid/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Namespaced Identifier">NSID</abbr></a>.)
 				</p>
 			</li>
 			<li>
 				<p><strong>It is safe to lowercase an <abbr title="Namespaced Identifier">NSID</abbr>.</strong></p>
 				<p>
-					The domain part is not case-sensitive, but the name is — <code>getRecord</code> is not <code>getrecord</code>.
+					The Internet domain part is not case-sensitive, but the name is — <code>getRecord</code> is not <code>getrecord</code>.
 					“Implementations should not force-lowercase NSIDs.”
 				</p>
 			</li>
 			<li>
-				<p><strong>Implementations reject an <abbr title="Namespaced Identifier">NSID</abbr> whose domain part is longer than 253 characters.</strong></p>
+				<p><strong>Implementations reject an <abbr title="Namespaced Identifier">NSID</abbr> whose Internet domain part is longer than 253 characters.</strong></p>
 				<p>
 					The specification says 253 — but the official test vectors list a 283-character one as valid, and Bluesky's TypeScript and Go code only check the 317-character total.
 				</p>
