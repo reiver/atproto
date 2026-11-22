@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Record: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="cbor" />
+<meta name="category" content="cid" />
+<meta name="category" content="data model" />
+<meta name="category" content="open social web" />
+<meta name="category" content="record" />
+<meta name="category" content="records" />
+<meta name="category" content="repository" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page">Record</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Record</h1>
+			<p>
+				one piece of data — a post, a like, a follow, a profile
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		In the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>), a user's data is made of <strong>records</strong>.
+		Each post is a record.
+		So is each like, each follow, each block, and the user's profile.
+	</p>
+	<p>
+		A record is a <abbr title="JavaScript Object Notation">JSON</abbr>-like object, with a <code>$type</code> field that says what kind of record it is.
+		For example, a Bluesky post:
+	</p>
+	<figure>
+		<pre>
+{
+  "$type": "app.bsky.feed.post",
+  "text": "Hello world!",
+  "createdAt": "2026-11-22T12:00:00.000Z"
+}
+		</pre>
+	</figure>
+	<p>
+		<mark>Notice what is <em>not</em> in the record — no author, no id, no address.
+		A record does not need them.
+		<em>Who</em> wrote it is the <strong>repository</strong> it is stored in.
+		Its <em>name</em> is its collection and record key.
+		And, its <em>fingerprint</em> is its <abbr title="Content IDentifier">CID</abbr> — a hash of its contents.</mark>
+	</p>
+	<section>
+		<h1>Where Records Live</h1>
+		<p>
+			Every account has a <strong>repository</strong>, hosted on its <strong><a href="../service/pds/">Personal Data Server</a></strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>).
+			The repository specification says:
+		</p>
+		<blockquote>
+			<p>
+				Each atproto account has a repository (or "repo") which stores all of their public data records. Repository contents are entirely public and verifiable ("self-certifying").
+			</p>
+		</blockquote>
+		<p>
+			And:
+		</p>
+		<blockquote>
+			<p>
+				At a high level, a repository is a key/value mapping where the keys are path names (as strings) and the values are records (CBOR objects).
+			</p>
+		</blockquote>
+		<p>
+			Each path has 2 parts — a <strong>collection</strong> and a <strong>record key</strong>:
+		</p>
+		<figure>
+			<pre>
+repository for @bsky.app
+┌──────────────────────────────────────────────┬──────────┐
+│ path (collection/record-key)                 │ value    │
+├──────────────────────────────────────────────┼──────────┤
+│ app.bsky.actor.profile/self                  │ a record │
+│ app.bsky.feed.post/3n2opitxdyc2j             │ a record │
+│ app.bsky.feed.post/3n2opitysuc2j             │ a record │
+│ app.bsky.feed.post/3n2ozugncr22j             │ a record │
+│ …                                            │ …        │
+└──────────────────────────────────────────────┴──────────┘
+			</pre>
+		</figure>
+		<dl>
+			<dt>collection</dt>
+			<dd>
+				<p>
+					the record type — an <strong><a href="../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong>, such as <code>app.bsky.feed.post</code>.
+					All records of the same type are in the same collection.
+				</p>
+			</dd>
+
+			<dt>record key (<code>rkey</code>)</dt>
+			<dd>
+				<p>
+					the name of one record within that collection — such as <code>3n2opitxdyc2j</code>, or <code>self</code>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			A repository is meant to hold “up to single-digit millions records”, according to the specification.
+		</p>
+	</section>
+	<section>
+		<h1>Naming a Record</h1>
+		<p>
+			A record is named by an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> — the repository's <strong><abbr title="decentralized identifier">DID</abbr></strong>, then the collection, then the record key:
+		</p>
+		<figure>
+			<pre>
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.actor.profile/self
+     └──────────────┬───────────────┘ └─────────┬──────────┘ └┬─┘
+                    │                           │             │
+                    │                           │        record key
+                    │                   collection (NSID)
+            repository (DID)
+			</pre>
+		</figure>
+		<p>
+			Note that a record key is only unique <em>within a collection</em>.
+			The specification says: “The tuple of (did, rkey) is not unique; the tuple (did, collection, rkey) is unique.”
+		</p>
+	</section>
+	<section>
+		<h1>Record Keys</h1>
+		<p>
+			Each record type's <strong><a href="../lexicon/">lexicon</a></strong> says what kind of record key it uses (its <code>key</code> field).
+			There are 4 kinds:
+		</p>
+		<dl>
+			<dt><code>tid</code></dt>
+			<dd>
+				<p>
+					a timestamp identifier, such as <code>3n2opitxdyc2j</code>.
+					The most common kind — used for posts, likes, follows, etc.
+					It is usually made from the current time, so records of the same type sort roughly by creation time.
+				</p>
+			</dd>
+
+			<dt><code>literal:&lt;value&gt;</code></dt>
+			<dd>
+				<p>
+					one fixed record key — so there is only ever one record in the collection.
+					The common one is <code>literal:self</code> — for example, a Bluesky profile is always <code>app.bsky.actor.profile/self</code>.
+				</p>
+			</dd>
+
+			<dt><code>nsid</code></dt>
+			<dd>
+				<p>
+					the record key must be an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+					(For example, published <strong>lexicons</strong> use the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> as the record key.)
+				</p>
+			</dd>
+
+			<dt><code>any</code></dt>
+			<dd>
+				<p>
+					any valid record key — for example, a domain name, or a number.
+					This lets the record key mean something, so a record can be looked up by a known name.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Whatever the kind, a record key must be 1 to 512 characters, using only letters, digits, and <code>.</code> <code>-</code> <code>_</code> <code>:</code> <code>~</code>.
+			It cannot be <code>.</code> or <code>..</code>.
+			And, it is case-sensitive.
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Valid</th>
+						<th>Invalid</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>3jui7kd54zh2y</code></td><td><code>alpha/beta</code></td></tr>
+					<tr><td><code>self</code></td><td><code>.</code></td></tr>
+					<tr><td><code>example.com</code></td><td><code>@handle</code></td></tr>
+					<tr><td><code>~1.2-3_</code></td><td><code>any space</code></td></tr>
+					<tr><td><code>pre:fix</code></td><td><code>dHJ1ZQ==</code></td></tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			One warning, from the specification: “Record keys are "user-controlled data" and may be arbitrarily selected by hostile accounts.”
+			So, do not trust a <code>tid</code> record key as the record's real creation time.
+		</p>
+	</section>
+	<section>
+		<h1>What a Record Looks Like</h1>
+		<p>
+			Here is a real record — <code>@bsky.app</code>'s profile — as returned by <code>com.atproto.repo.getRecord</code> on its <strong><abbr title="Personal Data Server">PDS</abbr></strong>:
+		</p>
+		<figure>
+			<pre>
+{
+  "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.actor.profile/self",
+  "cid": "bafyreihmkky5jpvhacnmt2vwxzejm4exit677ao2z6mevdib7lqnyvizsq",
+  "value": {
+    "$type": "app.bsky.actor.profile",
+    "avatar": {
+      "ref": {
+        "$link": "bafkreihwihm6kpd6zuwhhlro75p5qks5qtrcu55jp3gddbfjsieiv7wuka"
+      },
+      "size": 256555,
+      "$type": "blob",
+      "mimeType": "image/jpeg"
+    },
+    "banner": {
+      "ref": {
+        "$link": "bafkreichzyovokfzmymz36p5jibbjrhsur6n7hjnzxrpbt5jaydp2szvna"
+      },
+      "size": 58042,
+      "$type": "blob",
+      "mimeType": "image/jpeg"
+    },
+    "pinnedPost": {
+      "cid": "bafyreicnt42y6vo6pfpvyro234ac4o6ijug6adwwrh7awflgrqlt4zibxq",
+      "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l"
+    },
+    "description": "official Bluesky account (check username👆)\n\nBugs, feature requests, feedback: support@bsky.app",
+    "displayName": "Bluesky"
+  }
+}
+			</pre>
+		</figure>
+		<p>
+			The record itself is <code>value</code>.
+			(<code>uri</code> and <code>cid</code> are added by the <abbr title="Application Programming Interface">API</abbr> — they are not stored in the record.)
+			Things to notice:
+		</p>
+		<ul>
+			<li><code>$type</code> — the record type. Records must always have one.</li>
+			<li><code>avatar</code> and <code>banner</code> — <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> references (see below). The images themselves are stored separately.</li>
+			<li><code>pinnedPost</code> — a <em>strong reference</em> to another record: its <code>uri</code> <em>and</em> its <code>cid</code> (see below).</li>
+		</ul>
+		<p>
+			What fields a record may have, and which are required, is set by its <strong><a href="../lexicon/">lexicon</a></strong> — <code>app.bsky.actor.profile</code>, here.
+		</p>
+	</section>
+	<section>
+		<h1>The Data Model</h1>
+		<p>
+			Records (and all other <strong><abbr title="AT-Protocol">ATProto</abbr></strong> data) follow the <strong>data model</strong>.
+			It can be written 2 ways:
+		</p>
+		<dl>
+			<dt><abbr title="JavaScript Object Notation">JSON</abbr></dt>
+			<dd><p>for <abbr title="HyperText Transfer Protocol">HTTP</abbr> <abbr title="Application Programming Interface">API</abbr>s — easy to read.</p></dd>
+
+			<dt><abbr title="Concise Binary Object Representation">CBOR</abbr> (specifically, <strong>DRISL</strong>)</dt>
+			<dd><p>for storing, signing, and hashing — the exact bytes are always the same for the same data.</p></dd>
+		</dl>
+		<p>
+			The specification says:
+		</p>
+		<blockquote>
+			<p>
+				When data needs to be authenticated (signed), referenced (linked by content hash), or stored efficiently, it is encoded in Concise Binary Object Representation (CBOR). […] The specific normalized subset of CBOR used in the atproto data model is called DRISL (which is successor to DAG-CBOR).
+			</p>
+		</blockquote>
+		<p>
+			The types are:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Type</th>
+						<th>In <abbr title="JavaScript Object Notation">JSON</abbr></th>
+						<th>Notes</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td>null</td><td><code>null</code></td><td></td></tr>
+					<tr><td>boolean</td><td><code>true</code> / <code>false</code></td><td></td></tr>
+					<tr><td>integer</td><td>a number</td><td>signed, 64-bit (best kept to 53 bits, for JavaScript)</td></tr>
+					<tr><td>string</td><td>a string</td><td>Unicode</td></tr>
+					<tr><td>bytes</td><td><code>{"$bytes": "&lt;base64&gt;"}</code></td><td></td></tr>
+					<tr><td>link</td><td><code>{"$link": "&lt;CID&gt;"}</code></td><td>a hash link to other data</td></tr>
+					<tr><td>array</td><td>an array</td><td></td></tr>
+					<tr><td>object</td><td>an object</td><td>keys are always strings</td></tr>
+					<tr><td>blob</td><td><code>{"$type": "blob", …}</code></td><td>a reference to a file</td></tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			A few rules worth knowing:
+		</p>
+		<ul>
+			<li>
+				<strong>No floating-point numbers.</strong>
+				The specification explains that de-serializing and re-encoding floats “is not always consistent” — and with content hashes, the bytes must be exactly the same every time.
+				If you need a fraction, use a string (or an integer, such as cents instead of dollars).
+			</li>
+			<li>
+				<strong>Field names starting with <code>$</code> are reserved</strong> for the protocol (<code>$type</code>, <code>$link</code>, <code>$bytes</code>).
+				Apps should not make up their own.
+			</li>
+			<li>
+				<strong>Missing, <code>null</code>, and “false-y” are all different.</strong>
+				Leaving a field out is not the same as setting it to <code>null</code>, which is not the same as setting it to <code>false</code>, <code>0</code>, or an empty array.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Blobs</h1>
+		<p>
+			Images, videos, and other files are not put <em>in</em> records.
+			They are uploaded separately (as <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong>), and the record refers to them:
+		</p>
+		<figure>
+			<pre>
+{
+  "$type": "blob",
+  "ref": {
+    "$link": "bafkreihwihm6kpd6zuwhhlro75p5qks5qtrcu55jp3gddbfjsieiv7wuka"
+  },
+  "mimeType": "image/jpeg",
+  "size": 256555
+}
+			</pre>
+		</figure>
+		<p>
+			<code>ref</code> is the hash (<abbr title="Content IDentifier">CID</abbr>) of the file, <code>mimeType</code> is its type, and <code>size</code> is its length in bytes.
+			Since every blob reference has <code>"$type": "blob"</code>, software can find them without knowing the record's <strong>lexicon</strong>.
+			(To download one, use <code>com.atproto.sync.getBlob</code> on the account's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			See: <a href="../how-to/backup-pds/">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+		</p>
+		<p>
+			(Some old records use a legacy format, with just <code>cid</code> and <code>mimeType</code>.
+			Software should accept it, but never write it.)
+		</p>
+	</section>
+	<section>
+		<h1>CIDs: A Record's Fingerprint</h1>
+		<p>
+			Every record has a <strong><abbr title="Content IDentifier">CID</abbr></strong> (Content IDentifier) — a hash of the record's DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr> bytes.
+			For records, the specification's “blessed” format is:
+		</p>
+		<ul>
+			<li><abbr title="Content IDentifier">CID</abbr> version 1,</li>
+			<li>codec DRISL (<code>0x71</code>, also known as <code>dag-cbor</code>) — or <code>raw</code> (<code>0x55</code>) for <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong>,</li>
+			<li>hash SHA-256, and</li>
+			<li>written as a string in base32 (starting with <code>b</code>) — which is why record <abbr title="Content IDentifier">CID</abbr>s start with <code>bafyrei</code>, and blob <abbr title="Content IDentifier">CID</abbr>s with <code>bafkrei</code>.</li>
+		</ul>
+		<p>
+			Since the <abbr title="Content IDentifier">CID</abbr> is computed from the contents, anyone can check that a copy of a record is genuine — no matter where they got it.
+			The specification calls this “self-certifying”:
+		</p>
+		<blockquote>
+			<p>
+				Hash references do have the property of being "self-certifying", meaning that returned data can be verified against the link hash. This makes it possible to redistribute content and trust copies even if coming from an untrusted party.
+			</p>
+		</blockquote>
+		<p>
+			And, since changing a record changes its <abbr title="Content IDentifier">CID</abbr>, a <abbr title="Content IDentifier">CID</abbr> names one exact <em>version</em> of a record.
+			That is why references like <code>pinnedPost</code> above (and likes, reposts, and replies) include both the <code>uri</code> (which record) and the <code>cid</code> (which version) — a <em>strong reference</em> (<code>com.atproto.repo.strongRef</code>).
+		</p>
+	</section>
+	<section>
+		<h1>Reading and Writing Records</h1>
+		<p>
+			Records are read and written through the account's <strong><a href="../service/pds/"><abbr title="Personal Data Server">PDS</abbr></a></strong>:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Auth</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>com.atproto.repo.getRecord</code></td><td>none</td><td>get one record</td></tr>
+					<tr><td><code>com.atproto.repo.listRecords</code></td><td>none</td><td>list the records in one collection</td></tr>
+					<tr><td><code>com.atproto.repo.createRecord</code></td><td>user</td><td>create a record (the <strong><abbr title="Personal Data Server">PDS</abbr></strong> can pick a <code>tid</code> record key)</td></tr>
+					<tr><td><code>com.atproto.repo.putRecord</code></td><td>user</td><td>create or replace a record, at a given record key</td></tr>
+					<tr><td><code>com.atproto.repo.deleteRecord</code></td><td>user</td><td>delete a record</td></tr>
+					<tr><td><code>com.atproto.repo.applyWrites</code></td><td>user</td><td>several creates, updates, and deletes at once</td></tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			When a record is written, the <strong><abbr title="Personal Data Server">PDS</abbr></strong> may check it against its <strong><a href="../lexicon/">lexicon</a></strong> (by default, only if it knows the lexicon).
+			Then, it makes a new signed commit to the repository, and announces the change on its firehose — which is how <strong><a href="../service/relay/">relays</a></strong> and <strong><a href="../service/appview/">AppViews</a></strong> find out.
+		</p>
+	</section>
+	<section>
+		<h1>Deleting Records</h1>
+		<p>
+			A deleted record is really gone from the repository.
+			The repository specification says: “Record deletion is supported without leaving a trace or "tombstone" of previous contents.”
+		</p>
+		<p>
+			And, other services should remove it too.
+			The accounts specification says: “When accounts remove records from their public repositories, hosting services should remove public access to that content.”
+		</p>
+	</section>
+	<section>
+		<h1>Records in Spaces</h1>
+		<p>
+			Everything above is about <em>public</em> records.
+			The proposal for <strong><a href="../space/">spaces</a></strong> adds <em>permissioned</em> records — stored in a separate <strong>space repo</strong> (one per user, per space), with a longer <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> that includes the space.
+			(That is a proposal, and not yet part of the specification.)
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a Go program that fetches a record from a <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and checks its <abbr title="Content IDentifier">CID</abbr> — by converting the record from <abbr title="JavaScript Object Notation">JSON</abbr> to DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr>, hashing it, and comparing the result to the <abbr title="Content IDentifier">CID</abbr> the <strong><abbr title="Personal Data Server">PDS</abbr></strong> reported.
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+
+	"github.com/bluesky-social/indigo/atproto/atdata"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
+)
+
+const (
+	pds        = "https://puffball.us-east.host.bsky.network"
+	did        = "did:plc:z72i7hdynmk6r22z27h6tvur" // bsky.app
+	collection = "app.bsky.actor.profile"
+	rkey       = "self"
+)
+
+func main() {
+	query := url.Values{"repo": {did}, "collection": {collection}, "rkey": {rkey}}
+	resp, err := http.Get(pds + "/xrpc/com.atproto.repo.getRecord?" + query.Encode())
+	if nil != err {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		URI   string          `json:"uri"`
+		CID   string          `json:"cid"`
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&amp;result); nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("uri:          ", result.URI)
+	fmt.Println("CID (PDS says):", result.CID)
+
+	// JSON → the atproto data model (this turns {"$link": …} into a real CID link, etc).
+	record, err := atdata.UnmarshalJSON(result.Value)
+	if nil != err {
+		log.Fatal(err)
+	}
+
+	// The data model → DRISL-CBOR (the exact bytes that get hashed).
+	encoded, err := atdata.MarshalCBOR(record)
+	if nil != err {
+		log.Fatal(err)
+	}
+
+	// CID: version 1, codec DRISL (0x71, "dag-cbor"), hash SHA-256.
+	computed, err := cid.NewPrefixV1(cid.DagCBOR, multihash.SHA2_256).Sum(encoded)
+	if nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("CID (computed):", computed.String())
+	fmt.Println("CBOR bytes:   ", len(encoded))
+
+	if computed.String() == result.CID {
+		fmt.Println("match")
+	} else {
+		fmt.Println("MISMATCH")
+	}
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Running it, on November 22nd, 2026, printed:
+		</p>
+		<figure>
+			<pre>
+uri:           at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.actor.profile/self
+CID (PDS says): bafyreihmkky5jpvhacnmt2vwxzejm4exit677ao2z6mevdib7lqnyvizsq
+CID (computed): bafyreihmkky5jpvhacnmt2vwxzejm4exit677ao2z6mevdib7lqnyvizsq
+CBOR bytes:    500
+match
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				The <abbr title="JavaScript Object Notation">JSON</abbr> cannot be hashed directly — <abbr title="JavaScript Object Notation">JSON</abbr> is not byte-exact (key order, spacing, etc).
+				The record has to be converted to the data model first (indigo's <code>atdata.UnmarshalJSON</code> turns <code>{"$link": …}</code> into a real link, for example), then encoded as DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr> (<code>atdata.MarshalCBOR</code>).
+			</li>
+			<li>
+				It uses <a href="https://github.com/bluesky-social/indigo">indigo</a> for the data model, and <code>github.com/ipfs/go-cid</code> and <code>github.com/multiformats/go-multihash</code> for the <abbr title="Content IDentifier">CID</abbr>.
+			</li>
+			<li>
+				It was also tried with a post (<code>app.bsky.feed.post/3n2opitxdyc2j</code>, which has a video blob and a link facet), and its <abbr title="Content IDentifier">CID</abbr> matched too.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>record</strong>:
+		</p>
+		<ol>
+			<li>is one piece of data — a post, a like, a follow, a profile, etc,</li>
+			<li>is stored in an account's <strong>repository</strong>, at a path made of a collection (<strong><abbr title="Namespaced Identifier">NSID</abbr></strong>) and a record key,</li>
+			<li>is named by an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> — <strong><abbr title="decentralized identifier">DID</abbr></strong>, collection, record key,</li>
+			<li>always has a <code>$type</code>, and its shape is set by its <strong>lexicon</strong>,</li>
+			<li>follows the data model — <abbr title="JavaScript Object Notation">JSON</abbr> or DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr>, with no floats, and blobs stored separately, and</li>
+			<li>has a <abbr title="Content IDentifier">CID</abbr> — a hash of its contents, which anyone can check.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a> — overview, repository paths</li>
+			<li><a href="https://atproto.com/specs/record-key">AT Protocol: Record Key</a> — key types, syntax, examples, guidelines</li>
+			<li><a href="https://atproto.com/specs/data-model">AT Protocol: Data Model</a> — types, floats, <code>$</code> fields, null vs missing, blobs, <abbr title="JavaScript Object Notation">JSON</abbr>, <abbr title="Content IDentifier">CID</abbr> formats</li>
+			<li><a href="https://atproto.com/specs/account">AT Protocol: Accounts</a> — content deletion</li>
+			<li><a href="https://atproto.com/specs/at-uri-scheme">AT Protocol: AT URI Scheme</a></li>
+			<li>Live requests, November 22nd, 2026: <code>com.atproto.repo.getRecord</code> on <code>puffball.us-east.host.bsky.network</code> for <code>app.bsky.actor.profile/self</code> and <code>app.bsky.feed.post/3n2opitxdyc2j</code> of <code>did:plc:z72i7hdynmk6r22z27h6tvur</code></li>
+			<li><a href="https://github.com/bluesky-social/indigo">indigo</a> — <code>atproto/atdata</code> (<code>UnmarshalJSON</code>, <code>MarshalCBOR</code>)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
