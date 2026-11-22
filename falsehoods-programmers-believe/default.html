@@ -77,6 +77,18 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>Every user has a handle.</strong></p>
+				<p>
+					An account might have no handle in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> (no <code>at://</code> entry in <code>alsoKnownAs</code>), or a handle that no longer resolves back to it.
+					The <strong><abbr title="decentralized identifier">DID</abbr></strong> specification says “an account whose DID document does not contain a valid and confirmed handle can still participate in the atproto ecosystem. Software should be careful to either not display any handle for such account, or obviously indicate that any handle associated with it is invalid.”
+				</p>
+				<p>
+					In <abbr title="Application Programming Interface">API</abbr> responses, such an account's handle may show up as the special value <code>handle.invalid</code> — which “can not be used in most situations (search queries, API requests, etc).”
+					And, the <code>handle</code> field on the firehose's <code>#identity</code> event is optional.
+					So, your code needs a “no handle” case.
+				</p>
+			</li>
+			<li>
 				<p><strong>Every handle ends in <code>.bsky.social</code>.</strong></p>
 				<p>
 					Any Internet domain can be a handle.
@@ -120,7 +132,7 @@
 	</section>
 	<section>
 		<h1>DIDs</h1>
-		<ol start="8">
+		<ol start="9">
 			<li>
 				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
 				<p>
@@ -170,7 +182,7 @@
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="14">
+		<ol start="15">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -219,7 +231,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="20">
+		<ol start="21">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -291,7 +303,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="30">
+		<ol start="31">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -344,7 +356,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="37">
+		<ol start="38">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -383,7 +395,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="42">
+		<ol start="43">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -437,7 +449,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="48">
+		<ol start="49">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
