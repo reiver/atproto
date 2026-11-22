@@ -73,7 +73,8 @@
 				</p>
 				<p>
 					But, you need to <mark>normalize</mark> the <strong><abbr title="decentralized identifier">DID</abbr></strong> before using it.
-					As, for example, <code>did:plc:scewmn2pl3oz36mxme2b6czz</code> and <code>DID:plc:scewmn2pl3oz36mxme2b6czz</code> as the same <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+					<strong><abbr title="decentralized identifier">DID</abbr>s</strong> are <abbr title="Uniform Resource Identifier">URI</abbr>s, and <abbr title="Uniform Resource Identifier">URI</abbr> schemes are case-insensitive (<a href="https://www.rfc-editor.org/rfc/rfc3986#section-3.1"><abbr title="Request for Comments">RFC</abbr> 3986</a>) — so <code>DID:plc:scewmn2pl3oz36mxme2b6czz</code> and <code>did:plc:scewmn2pl3oz36mxme2b6czz</code> are the same <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+					<abbr title="AT-Protocol">ATProto</abbr> requires the normalized (lowercase) form: normalize <strong><abbr title="decentralized identifier">DID</abbr>s</strong> when they come from user input, store and compare only the normalized form, and reject non-normalized <strong><abbr title="decentralized identifier">DID</abbr>s</strong> that arrive in protocol data.
 				</p>
 			</li>
 			<li>
@@ -226,6 +227,12 @@
 					And, a <code>did:plc</code> identifier is lowercase too: “the entire identifier is lower-case (and should be normalized to lower-case)” (from the <code>did:plc</code> specification).
 					The <abbr title="AT-Protocol">ATProto</abbr> specification says “protocol implementations should reject DIDs with invalid casing.”
 					(<code>plc.directory</code> answered <code>did:plc:Z72I7HDYNMK6R22Z27H6TVUR</code>, <code>did:PLC:…</code>, and <code>DID:PLC:…</code> with <code>400</code> “Resolution of non-PLC DIDs not supported”.)
+				</p>
+				<p>
+					(This is about <strong><abbr title="decentralized identifier">DID</abbr>s</strong> in <em>protocol data</em> — records, tokens, <abbr title="Application Programming Interface">API</abbr> responses.
+					As a <abbr title="Uniform Resource Identifier">URI</abbr>, the <code>did:</code> scheme is case-insensitive, so <code>DID:</code> means the same thing — but <abbr title="AT-Protocol">ATProto</abbr> requires the normalized, lowercase form there.
+					<strong><abbr title="decentralized identifier">DID</abbr>s</strong> typed in by a user may be normalized; see item 2.
+					And, even under the general <strong><abbr title="decentralized identifier">DID</abbr></strong> syntax, the method name must be lowercase, so <code>did:PLC:…</code> is invalid on its own.)
 				</p>
 			</li>
 			<li>
