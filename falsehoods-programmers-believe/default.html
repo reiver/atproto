@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>Falsehoods Programmers Believe About ATProto</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="falsehoods" />
+<meta name="category" content="falsehoods programmers believe" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page">Falsehoods Programmers Believe</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">Falsehoods Programmers Believe About <abbr title="AT-Protocol">ATProto</abbr></h1>
+			<p>
+				assumptions about handles, <abbr title="decentralized identifier">DID</abbr>s, records, and servers that will break your code
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		In the year 2010, Patrick McKenzie wrote and published the article <a target="_blank" href="https://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/">“Falsehoods Programmers Believe About Names”</a>
+		—
+		a list of reasonable-sounding assumptions about people's names that not only <em>were not true</em>, but also can (if assumed) would <em>create bugs</em> and even <em>break software</em>.
+		That article started a whole genre of <em>Falsehoods Programmers Believe</em> articles.
+		This article (<em>"Falsehoods Programmers Believe About <abbr title="AT-Protocol">ATProto</abbr>"</em>) is my contribution to that genre.
+	</p>
+	<p>
+		<mark><em>Every</em> numbered statement below is <em>false</em>.
+		Each one is followed by what is actually true — and where to read more.</mark>
+	</p>
+	<p>
+		These are not made up for effect.
+		Each one is backed by the specification, or by a live request to real <strong><abbr title="AT-Protocol">ATProto</abbr></strong> servers (made in November 2026).
+	</p>
+	<section>
+		<h1>Handles</h1>
+		<ol>
+			<li>
+				<p><strong>A user's handle never changes.</strong></p>
+				<p>
+					Handles can change.
+					The account's <strong><abbr title="decentralized identifier">DID</abbr></strong> is what is permanent — the accounts specification calls it “unique and immutable”.
+				</p>
+			</li>
+			<li>
+				<p><strong>So, a handle is a good database key for a user.</strong></p>
+				<p>
+					Use the <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+					Store the handle only for display — and re-check it.
+				</p>
+			</li>
+			<li>
+				<p><strong>Every handle ends in <code>.bsky.social</code>.</strong></p>
+				<p>
+					Any domain can be a handle.
+					And, other <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> hand out their own — <code>blacksky.app</code>, for example, offers <code>.blacksky.app</code>, <code>.myatproto.social</code>, <code>.latinsky.app</code>, and others.
+				</p>
+			</li>
+			<li>
+				<p><strong>Handles are resolved with <abbr title="Domain Name System">DNS</abbr>.</strong></p>
+				<p>
+					With <abbr title="Domain Name System">DNS</abbr> (a <code>TXT</code> record at <code>_atproto.&lt;handle&gt;</code>) <em>or</em> <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> (<code>/.well-known/atproto-did</code>).
+					You need to support both.
+				</p>
+			</li>
+			<li>
+				<p><strong>If a <abbr title="decentralized identifier">DID</abbr> document lists a handle, the account owns that handle.</strong></p>
+				<p>
+					Anyone can put any handle in their own <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+					The handle has to resolve <em>back</em> to the same <strong><abbr title="decentralized identifier">DID</abbr></strong> — both directions must agree.
+					Otherwise, show <code>handle.invalid</code>.
+				</p>
+			</li>
+			<li>
+				<p><strong><code>com.atproto.identity.resolveHandle</code> checks both directions for you.</strong></p>
+				<p>
+					Its own lexicon says it “Does not necessarily bi-directionally verify against the the DID document.”
+					(See: <a href="../how-to/resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a>.)
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>DIDs</h1>
+		<ol start="7">
+			<li>
+				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
+				<p>
+					<code>did:web</code> is supported too.
+					Your code needs to handle both.
+				</p>
+			</li>
+			<li>
+				<p><strong>A <code>did:web</code> can be any <code>did:web</code>.</strong></p>
+				<p>
+					In <abbr title="AT-Protocol">ATProto</abbr>, “did:web is restricted in atproto to only full domains, not paths or port specification” (from the record key specification).
+				</p>
+			</li>
+			<li>
+				<p><strong>Whatever <code>plc.directory</code> returns for a <abbr title="decentralized identifier">DID</abbr> is that <abbr title="decentralized identifier">DID</abbr>'s document.</strong></p>
+				<p>
+					Check that the document's <code>id</code> matches the <strong><abbr title="decentralized identifier">DID</abbr></strong> you asked for.
+					(See: <a href="../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Personal Data Servers</h1>
+		<ol start="10">
+			<li>
+				<p><strong>“Personal” Data Server means one server per person.</strong></p>
+				<p>
+					“Many PDSes will host multiple users” (the glossary).
+					Most host many.
+				</p>
+			</li>
+			<li>
+				<p><strong>Bluesky users' data is on <code>bsky.social</code>.</strong></p>
+				<p>
+					Bluesky's accounts are spread across many <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts — for example, <code>@bsky.app</code> is on <code>puffball.us-east.host.bsky.network</code>.
+					<code>bsky.social</code> is where they <em>log in</em>.
+				</p>
+			</li>
+			<li>
+				<p><strong>The server a user logs in at is the server that has their data.</strong></p>
+				<p>
+					It might be an <em>entryway</em> — a separate OAuth server for many <strong><abbr title="Personal Data Server">PDS</abbr>es</strong>.
+					<code>puffball.us-east.host.bsky.network</code>'s <code>/.well-known/oauth-protected-resource</code> lists <code>https://bsky.social</code> as its authorization server.
+					(<code>blacksky.app</code>, on the other hand, lists itself.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A user's <abbr title="Personal Data Server">PDS</abbr> never changes.</strong></p>
+				<p>
+					Accounts can migrate to another <strong><abbr title="Personal Data Server">PDS</abbr></strong> — that is a core design goal.
+					Always look up the current <strong><abbr title="Personal Data Server">PDS</abbr></strong> from the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> (and do not cache it forever).
+				</p>
+			</li>
+			<li>
+				<p><strong>A user's <abbr title="Personal Data Server">PDS</abbr> can show them everyone's posts.</strong></p>
+				<p>
+					A <strong><abbr title="Personal Data Server">PDS</abbr></strong> only has its own accounts' data.
+					For timelines, threads, and counts, it forwards the request to an <strong>AppView</strong>.
+					(See: <a href="../service/pds/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>Bluesky's <abbr title="Personal Data Server">PDS</abbr> software is the only <abbr title="Personal Data Server">PDS</abbr> software.</strong></p>
+				<p>
+					Any server that implements the right end-points is a <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+					(For example, the Blacksky team's <a href="https://github.com/blacksky-algorithms/rsky">rsky</a> project, written in Rust, includes <code>rsky-pds</code>.)
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Records and Repositories</h1>
+		<ol start="16">
+			<li>
+				<p><strong>A record has an author field.</strong></p>
+				<p>
+					The author is the <strong>repository</strong> the record is in.
+					(See: <a href="../record/"><abbr title="AT-Protocol">ATProto</abbr> Record</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A record key is unique within a repository.</strong></p>
+				<p>
+					“The tuple of (did, rkey) is not unique; the tuple (did, collection, rkey) is unique.”
+				</p>
+			</li>
+			<li>
+				<p><strong>A <code>tid</code> record key tells you when the record was created.</strong></p>
+				<p>
+					“Record keys are "user-controlled data" and may be arbitrarily selected by hostile accounts.”
+					Do not trust them as timestamps.
+				</p>
+			</li>
+			<li>
+				<p><strong>A record's <code>createdAt</code> is when it was created.</strong></p>
+				<p>
+					It is whatever the client put there.
+					The <code>app.bsky.feed.post</code> lexicon describes it as a “Client-declared timestamp”.
+				</p>
+			</li>
+			<li>
+				<p><strong>Records can contain floating-point numbers.</strong></p>
+				<p>
+					Floats are not allowed in the data model — they do not round-trip reliably, and the bytes must be exact for hashing.
+				</p>
+			</li>
+			<li>
+				<p><strong>You can compute a record's <abbr title="Content IDentifier">CID</abbr> by hashing its <abbr title="JavaScript Object Notation">JSON</abbr>.</strong></p>
+				<p>
+					The <abbr title="Content IDentifier">CID</abbr> is a hash of its DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr> encoding.
+					<abbr title="JavaScript Object Notation">JSON</abbr> is not byte-exact.
+				</p>
+			</li>
+			<li>
+				<p><strong>A missing field and a <code>null</code> field mean the same thing.</strong></p>
+				<p>
+					They are different — and both are different from <code>false</code>, <code>0</code>, or an empty array.
+				</p>
+			</li>
+			<li>
+				<p><strong>Every record in a repository is valid against its lexicon.</strong></p>
+				<p>
+					By default, a <strong><abbr title="Personal Data Server">PDS</abbr></strong> only checks records whose lexicon it knows (“optimistic validation”, or “fail-open”).
+					Validate what you read.
+				</p>
+			</li>
+			<li>
+				<p><strong>A record with fields its lexicon does not mention is invalid.</strong></p>
+				<p>
+					Unexpected fields should be ignored — “at worst as warnings”.
+					(Validating a post with an extra <code>mood</code> field against <code>app.bsky.feed.post</code> passes.
+					See: <a href="../lexicon/"><abbr title="AT-Protocol">ATProto</abbr> Lexicon</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A deleted record leaves a tombstone.</strong></p>
+				<p>
+					“Record deletion is supported without leaving a trace or "tombstone" of previous contents.”
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>NSIDs and Lexicons</h1>
+		<ol start="26">
+			<li>
+				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
+				<p>
+					It is a <em>name</em> — a reversed domain plus a name.
+					(See: <a href="../nsid/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Namespaced Identifier">NSID</abbr></a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>It is safe to lowercase an <abbr title="Namespaced Identifier">NSID</abbr>.</strong></p>
+				<p>
+					The domain part is not case-sensitive, but the name is — <code>getRecord</code> is not <code>getrecord</code>.
+					“Implementations should not force-lowercase NSIDs.”
+				</p>
+			</li>
+			<li>
+				<p><strong>Implementations reject an <abbr title="Namespaced Identifier">NSID</abbr> whose domain part is longer than 253 characters.</strong></p>
+				<p>
+					The specification says 253 — but the official test vectors list a 283-character one as valid, and Bluesky's TypeScript and Go code only check the 317-character total.
+				</p>
+			</li>
+			<li>
+				<p><strong>If <code>_lexicon.feed.bsky.app</code> does not exist, try <code>_lexicon.bsky.app</code>.</strong></p>
+				<p>
+					Lexicon resolution is not hierarchical.
+					If the exact record does not exist, resolution simply fails.
+					(See: <a href="../how-to/resolve-lexicon/">How-To Resolve a Lexicon</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>The <code>app.bsky.*</code> lexicons are in the <code>bluesky-social/atproto</code> repository on GitHub.</strong></p>
+				<p>
+					Not anymore — its main branch has no <code>lexicons/app/bsky/</code> directory.
+					Resolve them from the network instead (they are published by <code>did:plc:4v4y5r3lwsbtmsxhile2ljac</code>).
+				</p>
+			</li>
+			<li>
+				<p><strong>A union in a lexicon lists every type you will ever see there.</strong></p>
+				<p>
+					Unions are <em>open</em> by default — new types can be added.
+					(The live <code>app.bsky.feed.post</code> lexicon's <code>embed</code> union includes <code>app.bsky.embed.gallery</code>, which older code will not know about.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A lexicon never changes.</strong></p>
+				<p>
+					It can change — in compatible ways (new optional fields, more union types, etc).
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>XRPC</h1>
+		<ol start="33">
+			<li>
+				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
+				<p>
+					<strong>XRPC</strong> is plain <abbr title="HyperText Transfer Protocol">HTTP</abbr> and <abbr title="JavaScript Object Notation">JSON</abbr>.
+					<code>curl</code> works.
+					(See: <a href="../xrpc/"><abbr title="AT-Protocol">ATProto</abbr> XRPC</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A server returns the error names listed in the end-point's lexicon.</strong></p>
+				<p>
+					Not always.
+					<code>resolveHandle</code>'s lexicon lists <code>HandleNotFound</code>, but <code>public.api.bsky.app</code> answered an unknown handle with <code>InvalidRequest</code>.
+				</p>
+			</li>
+			<li>
+				<p><strong>Errors are always <abbr title="JavaScript Object Notation">JSON</abbr>.</strong></p>
+				<p>
+					The specification itself warns that “many services will return generic load-balancer or reverse-proxy HTML error pages.”
+				</p>
+			</li>
+			<li>
+				<p><strong>An end-point a server does not have returns <code>404</code>.</strong></p>
+				<p>
+					A Bluesky <strong><abbr title="Personal Data Server">PDS</abbr></strong> answered a made-up end-point with <code>401 AuthMissing</code>.
+				</p>
+			</li>
+			<li>
+				<p><strong>A cursor means something you can use.</strong></p>
+				<p>
+					Treat it as opaque.
+					(One server's <code>listRecords</code> cursor happens to be the last record key — do not depend on that.)
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>The Network</h1>
+		<ol start="38">
+			<li>
+				<p><strong>There is one firehose.</strong></p>
+				<p>
+					Every <strong><abbr title="Personal Data Server">PDS</abbr></strong> has its own firehose, and there are several <strong>relays</strong> — for example, Bluesky's <code>bsky.network</code> and the Blacksky team's <code>atproto.africa</code>.
+					(See: <a href="../service/relay/"><abbr title="AT-Protocol">ATProto</abbr> Relay</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A follower count is a fact.</strong></p>
+				<p>
+					It is one <strong>AppView</strong>'s opinion.
+					For the same account, at the same time, <code>public.api.bsky.app</code> said 290 followers, and <code>api.blacksky.community</code> said 194.
+					(See: <a href="../service/appview/"><abbr title="AT-Protocol">ATProto</abbr> AppView</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A feed generator sends you posts.</strong></p>
+				<p>
+					It sends a <em>skeleton</em> — a list of post <abbr title="Uniform Resource Identifier">URI</abbr>s.
+					The <strong>AppView</strong> fills in the posts.
+					(See: <a href="../service/feed-generator/"><abbr title="AT-Protocol">ATProto</abbr> Feed Generator</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>A label deletes content.</strong></p>
+				<p>
+					A label is a signed annotation.
+					What to do with it (hide, blur, warn, nothing) is up to each app and user.
+					(See: <a href="../service/labeler/"><abbr title="AT-Protocol">ATProto</abbr> Labeler</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>Account status (active, deactivated, etc) can be verified cryptographically.</strong></p>
+				<p>
+					“Unlike other aspects of atproto, account status is not self-certifying”.
+					It is passed along hop by hop — so different services may disagree.
+					When in doubt, ask the account's own <strong><abbr title="Personal Data Server">PDS</abbr></strong> (<code>com.atproto.sync.getRepoStatus</code>).
+				</p>
+			</li>
+			<li>
+				<p><strong><abbr title="AT-Protocol">ATProto</abbr> is Bluesky.</strong></p>
+				<p>
+					Bluesky is one app built on it.
+					Others use their own lexicons — for example, <code>site.standard.document</code>, <code>community.lexicon.location</code>, and <code>actor.rpg.sprite</code>.
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Spaces (Permissioned Data)</h1>
+		<p>
+			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
+		</p>
+		<ol start="44">
+			<li>
+				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
+				<p>
+					Today, yes — but the spaces proposal adds data that only some people may read.
+				</p>
+			</li>
+			<li>
+				<p><strong>Space data is encrypted.</strong></p>
+				<p>
+					“Atproto spaces provide access control, not confidentiality. They are not end-to-end encrypted.”
+				</p>
+			</li>
+			<li>
+				<p><strong>A space is stored on one server.</strong></p>
+				<p>
+					Each member's records stay on that member's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+					“The space does not colocate records on a single network host.”
+				</p>
+			</li>
+			<li>
+				<p><strong>A copy of space data proves who wrote it.</strong></p>
+				<p>
+					Space data is authenticated with <abbr title="Message Authentication Code">MAC</abbr>s, not signatures — on purpose, so that it “should not carry proof of authorship that survives a leak outside its access boundary.”
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Why These Matter</h1>
+		<p>
+			Most of these come from the same idea: <strong><abbr title="AT-Protocol">ATProto</abbr></strong> separates things that are usually tied together.
+		</p>
+		<ul>
+			<li>Identity (<strong><abbr title="decentralized identifier">DID</abbr></strong>) is separate from name (handle) — and from server (<strong><abbr title="Personal Data Server">PDS</abbr></strong>).</li>
+			<li>Data (<strong>records</strong>) is separate from views of the data (<strong>AppViews</strong>, <strong>feed generators</strong>).</li>
+			<li>Schemas (<strong>lexicons</strong>) are separate from any one server, and can evolve.</li>
+			<li>And, every service decides for itself what to trust and what to show.</li>
+		</ul>
+		<p>
+			So, the safe defaults are: key everything by <strong><abbr title="decentralized identifier">DID</abbr></strong>; resolve, do not assume; validate what you read; ignore what you do not understand; and expect other servers to disagree with yours.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li>Patrick McKenzie, <a href="https://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/">“Falsehoods Programmers Believe About Names”</a> (June 17th, 2010) — the original</li>
+			<li><a href="https://atproto.com/specs/account">AT Protocol: Accounts</a> — immutable <abbr title="decentralized identifier">DID</abbr>s, account status</li>
+			<li><a href="https://atproto.com/specs/record-key">AT Protocol: Record Key</a></li>
+			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a></li>
+			<li><a href="https://atproto.com/specs/data-model">AT Protocol: Data Model</a></li>
+			<li><a href="https://atproto.com/specs/lexicon">AT Protocol: Lexicon</a></li>
+			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a> and <a href="https://github.com/bluesky-social/atproto-interop-tests">atproto-interop-tests</a></li>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a></li>
+			<li><a href="https://atproto.com/specs/oauth">AT Protocol: OAuth</a> — entryways</li>
+			<li><a href="https://atproto.com/guides/glossary">AT Protocol: Glossary</a></li>
+			<li><a href="https://github.com/blacksky-algorithms/rsky">blacksky-algorithms/rsky</a> — includes <code>rsky-pds</code></li>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a></li>
+			<li>Live requests made while writing the other articles on this site (November 2026) — see each linked article's Sources</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>

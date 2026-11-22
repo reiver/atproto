@@ -535,6 +535,9 @@ $ curl 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?hand
 			<li>If that fails, <code>GET</code> <code>https://<var>HANDLE</var>/.well-known/atproto-did</code>, and use the (whitespace trimmed) body.</li>
 			<li>Resolve the <strong><abbr title="decentralized identifier">DID</abbr></strong> to its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, and check that the first <code>at://</code> entry in <code>alsoKnownAs</code> is the same <strong>handle</strong>.</li>
 		</ol>
+		<p>
+			(For more assumptions like these that break code, see: <a href="../../falsehoods-programmers-believe/">Falsehoods Programmers Believe About <abbr title="AT-Protocol">ATProto</abbr></a>.)
+		</p>
 	</section>
 	<section>
 		<h1>Sources</h1>
