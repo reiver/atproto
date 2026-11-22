@@ -171,11 +171,34 @@
 					(See: <a href="../how-to/resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a>.)
 				</p>
 			</li>
+			<li>
+				<p><strong>Handles are case-sensitive — so keep the capitalization the user typed.</strong></p>
+				<p>
+					Handles are not case-sensitive.
+					The handle specification says “Only normalized (lowercase) handles should be stored in records or used in outbound API calls. Applications should not preserve user-provided case information and attempt to display handles in anything other than lower-case.”
+					Its example: “the handle input string <code>BlueskyWeb.xyz</code> should be normalized, stored, and displayed as <code>blueskyweb.xyz</code>.”
+				</p>
+			</li>
+			<li>
+				<p><strong>The <code>@</code> is part of the handle.</strong></p>
+				<p>
+					It is just decoration, for display.
+					The handle specification says “Handles may be prefixed with the "at" symbol (like <code>@user.example.com</code>) in user interfaces, but this is not a valid syntax for a handle in records, APIs, and other back-end contexts.”
+					So, strip it from user input before resolving.
+				</p>
+			</li>
+			<li>
+				<p><strong>On <code>example.com</code>'s own site, it is fine to show <code>@alice.example.com</code> as just <code>@alice</code>.</strong></p>
+				<p>
+					The handle specification says “Handles should generally not be truncated to local context. For example, the handle <code>@alice.example.com</code> should not be displayed as <code>@alice</code>, even in the local context of an <code>example.com</code> service.”
+					(It also warns that very long handles “can result in similar issues when truncated at the start or end” — for example, a handle that starts with <code>paypal.com</code> being shown as <code>paypal.com…</code>.)
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
 		<h1>DIDs</h1>
-		<ol start="12">
+		<ol start="15">
 			<li>
 				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
 				<p>
@@ -259,7 +282,7 @@
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="19">
+		<ol start="22">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -335,7 +358,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="27">
+		<ol start="30">
 			<li>
 				<p><strong>Every record on the network is a Bluesky post.</strong></p>
 				<p>
@@ -442,7 +465,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="38">
+		<ol start="41">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -495,7 +518,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="45">
+		<ol start="48">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -534,7 +557,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="50">
+		<ol start="53">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -618,7 +641,7 @@ equipment.rpg.item
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="59">
+		<ol start="62">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -730,7 +753,7 @@ equipment.rpg.item
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="67">
+		<ol start="70">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
