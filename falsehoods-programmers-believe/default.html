@@ -563,6 +563,19 @@
 					Others use their own lexicons — for example, <code>site.standard.document</code>, <code>community.lexicon.location</code>, and <code>actor.rpg.sprite</code>.
 				</p>
 			</li>
+			<li>
+				<p><strong><abbr title="AT-Protocol">ATProto</abbr> is a microblogging protocol.</strong></p>
+				<p>
+					Microblogging (short posts, like Bluesky's) is just one thing built on it.
+					The overview describes <strong><abbr title="AT-Protocol">ATProto</abbr></strong> as “a decentralized protocol for large-scale social web applications”.
+					Nothing in the core protocol is about posts — records, repositories, <strong>XRPC</strong>, and sync work the same for any record type.
+					What a record <em>is</em> comes from its <strong><a href="../lexicon/">lexicon</a></strong>, and anyone with a domain can define new ones.
+				</p>
+				<p>
+					For example: long-form documents (<code>site.standard.document</code>), locations (<code>community.lexicon.location</code>), game sprites (<code>actor.rpg.sprite</code>), custom feeds (<code>app.bsky.feed.generator</code>), and, in the <strong><a href="../space/">spaces</a></strong> proposal, bookmarks, private forums, and group chats.
+					Even the protocol's own <strong>lexicons</strong> are published as records (<code>com.atproto.lexicon.schema</code>).
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
@@ -570,7 +583,7 @@
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="57">
+		<ol start="58">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -682,7 +695,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="65">
+		<ol start="66">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
