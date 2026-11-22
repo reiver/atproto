@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>How-To Count an ATProto Account's Followers: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="backlinks" />
+<meta name="category" content="follower count" />
+<meta name="category" content="followers" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">How-To</a></li>
+		<li><a href="./" aria-current="page">Count Followers</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">How-To Count an <abbr title="AT-Protocol">ATProto</abbr> Account's Followers: A Developers' Guide</h1>
+			<p>
+				<code>app.bsky.graph.follow</code>
+				<code>app.bsky.actor.getProfile</code>
+				<code>blue.microcosm.links.getBacklinksCount</code>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		This article goes over how-to <strong>count</strong> the <strong>followers</strong> of an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) account from a computer-programming point-of-view.
+	</p>
+	<p>
+		It sounds simple.
+		It is not — because, in <strong><abbr title="AT-Protocol">ATProto</abbr></strong>, no single place has the answer.
+	</p>
+	<p>
+		<mark>Nobody “has” an account's follower count — not the account's own <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and not any one service.
+		Every follower count you see is somebody's <em>estimate</em>, made by gathering follows from across the whole network.
+		Different services get different numbers.</mark>
+	</p>
+	<section>
+		<h1>Where Follows Are Stored</h1>
+		<p>
+			A follow is a <strong><a href="../../record/">record</a></strong>, of type <code>app.bsky.graph.follow</code>.
+			And, it is stored in the <em>follower's</em> <strong>repository</strong> — not in the repository of the account being followed.
+		</p>
+		<p>
+			For example, here is one of <code>@bsky.app</code>'s follows — a record in <code>@bsky.app</code>'s own repository (with the followed account's <strong><abbr title="decentralized identifier">DID</abbr></strong> left out):
+		</p>
+		<figure>
+			<pre>
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.graph.follow/3n2rcrolit32z
+{
+  "$type": "app.bsky.graph.follow",
+  "subject": "did:plc:…",
+  "createdAt": "2026-11-20T19:23:53.695Z"
+}
+			</pre>
+		</figure>
+		<p>
+			The <code>subject</code> is the <strong><abbr title="decentralized identifier">DID</abbr></strong> of the account being followed.
+			The <strong><a href="../../lexicon/">lexicon</a></strong> describes it as a:
+		</p>
+		<blockquote>
+			<p>
+				Record declaring a social 'follow' relationship of another account. Duplicate follows will be ignored by the AppView.
+			</p>
+		</blockquote>
+		<p>
+			So:
+		</p>
+		<ul>
+			<li>An account's <strong><abbr title="Personal Data Server">PDS</abbr></strong> knows exactly who that account <em>follows</em> — those records are in its repository.</li>
+			<li>But, it does <em>not</em> know who <em>follows it</em>. Those records are spread across everyone else's repositories — on every <strong><abbr title="Personal Data Server">PDS</abbr></strong> in the network.</li>
+		</ul>
+		<figure>
+			<pre>
+┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐
+│ Alice's repository      │   │ Bob's repository        │   │ Carol's repository      │
+│ (on Alice's PDS)        │   │ (on Bob's PDS)          │   │ (on Carol's PDS)        │
+│                         │   │                         │   │                         │
+│ follow → Dave           │   │ follow → Dave           │   │ follow → Erin           │
+└─────────────────────────┘   └─────────────────────────┘   └─────────────────────────┘
+
+How many followers does Dave have?  Dave's own repository does not say.
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>Ways to Count Followers</h1>
+		<p>
+			To count an account's followers, you have to find every <code>app.bsky.graph.follow</code> record — in every repository — whose <code>subject</code> is that account.
+			There are 3 ways to go about that.
+		</p>
+		<section>
+			<h1>Way 1: Check Every Repository</h1>
+			<p>
+				This works, in principle:
+			</p>
+			<ol>
+				<li>get a list of every account — for example, with <code>com.atproto.sync.listRepos</code> on a <strong><a href="../../service/relay/">relay</a></strong>,</li>
+				<li>download each account's repository — with <code>com.atproto.sync.getRepo</code> (see: <a href="../backup-pds/">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>), and</li>
+				<li>count the follow records whose <code>subject</code> is the account.</li>
+			</ol>
+			<p>
+				But, it is very expensive — it means downloading tens of millions of repositories.
+				And, you can never be sure you found <em>every</em> <strong><abbr title="Personal Data Server">PDS</abbr></strong> — a relay only knows the hosts it crawls.
+				By the time you finish, the answer has changed, too.
+			</p>
+		</section>
+		<section>
+			<h1>Way 2: Index the Firehose (What AppViews Do)</h1>
+			<p>
+				Instead of scanning every time someone asks, keep a running count:
+			</p>
+			<ol>
+				<li>fill in the past once (a backfill — Way 1, done one time), then</li>
+				<li>watch the firehose, and add 1 for every new follow, and subtract 1 for every deleted follow.</li>
+			</ol>
+			<p>
+				Then, answering “how many followers?” is just a lookup.
+				This is what an <strong><a href="../../service/appview/">AppView</a></strong> does — and the count it returns is in <code>followersCount</code>, from <code>app.bsky.actor.getProfile</code>.
+				(The list of followers comes from <code>app.bsky.graph.getFollowers</code>.)
+			</p>
+			<p>
+				How complete the count is depends on which relays the AppView reads, and how complete its backfill was.
+			</p>
+		</section>
+		<section>
+			<h1>Way 3: Ask a Backlink Index</h1>
+			<p>
+				A <em>backlink index</em> keeps track of every link from every record — organized by what the link points <em>to</em>.
+				Then, “how many follow records point at this <strong><abbr title="decentralized identifier">DID</abbr></strong>?” is just a lookup.
+			</p>
+			<p>
+				<a href="https://constellation.microcosm.blue/">Constellation</a>, from the microcosm project, is one.
+				It describes itself as “a self-hosted JSON API to an atproto-wide index of PDS record back-links”, and says:
+			</p>
+			<blockquote>
+				<p>
+					It works by recursively walking all records coming through the firehose, searching for anything that looks like a link. Links are indexed by the target they point at, the collection the record came from, and the JSON path to the link in that record.
+				</p>
+			</blockquote>
+			<p>
+				To count follows of an account:
+			</p>
+			<figure>
+				<pre>
+GET https://constellation.microcosm.blue/xrpc/blue.microcosm.links.getBacklinksCount
+      ?subject=did:plc:scewmn2pl3oz36mxme2b6czz
+      &amp;source=app.bsky.graph.follow:subject
+
+{"total":134}
+				</pre>
+			</figure>
+			<p>
+				<code>source</code> is the collection (<code>app.bsky.graph.follow</code>), and the field in the record that holds the link (<code>subject</code>).
+			</p>
+			<p>
+				Note that, at the time of writing, its home page says “indexing new records in real time, backfill coming soon!” — and that it has indexed for 662 days.
+				So, it only knows about follows created (or seen on the firehose) since it started.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Three Services, Three Answers</h1>
+		<p>
+			Here is what 3 services said, at the same time (November 22nd, 2026), for the same account — <code>reiver.blacksky.team</code> (<code>did:plc:scewmn2pl3oz36mxme2b6czz</code>):
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Source</th>
+						<th>Followers</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>public.api.bsky.app</code> (Bluesky's AppView)</td>
+						<td>292</td>
+					</tr>
+					<tr>
+						<td><code>api.blacksky.community</code> (the Blacksky team's AppView)</td>
+						<td>196</td>
+					</tr>
+					<tr>
+						<td>Constellation (follow records pointing at the <strong><abbr title="decentralized identifier">DID</abbr></strong>)</td>
+						<td>134</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			(Constellation's count of <em>distinct</em> accounts with a follow pointing at the <strong><abbr title="decentralized identifier">DID</abbr></strong>, from <code>/links/count/distinct-dids</code>, was also 134 — so there were no duplicate follows in what it had seen.)
+		</p>
+	</section>
+	<section>
+		<h1>Why the Numbers Differ</h1>
+		<dl>
+			<dt>coverage</dt>
+			<dd>
+				<p>
+					Which relays and <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> each service reads, since when, and whether it filled in the past.
+					(Constellation, for example, has not backfilled.)
+				</p>
+			</dd>
+
+			<dt>policy</dt>
+			<dd>
+				<p>
+					What each service chooses to count.
+					For example, the follow lexicon says “Duplicate follows will be ignored by the AppView.”
+					And, a service might leave out follows from accounts that are deleted, deactivated, taken down, or that it considers spam.
+					(I am inferring this from how these services generally work — I have not confirmed the actual rules each of these services uses.)
+				</p>
+			</dd>
+
+			<dt>timing</dt>
+			<dd>
+				<p>
+					Each service updates on its own schedule.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			None of them is “wrong”.
+			Each is counting what <em>it</em> has seen, by <em>its</em> rules.
+			(See also: <a href="../../falsehoods-programmers-believe/">Falsehoods Programmers Believe About <abbr title="AT-Protocol">ATProto</abbr></a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a Go program that asks all 3 services for an account's follower count.
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+)
+
+const did = "did:plc:scewmn2pl3oz36mxme2b6czz" // reiver.blacksky.team
+
+func getJSON(u string, value any) error {
+	resp, err := http.Get(u)
+	if nil != err {
+		return err
+	}
+	defer resp.Body.Close()
+	if http.StatusOK != resp.StatusCode {
+		return fmt.Errorf("%s: %s", u, resp.Status)
+	}
+	return json.NewDecoder(resp.Body).Decode(value)
+}
+
+// Ask an AppView: its followersCount, from app.bsky.actor.getProfile.
+func appViewCount(appView string) (int, error) {
+	var profile struct {
+		FollowersCount int `json:"followersCount"`
+	}
+	err := getJSON(appView+"/xrpc/app.bsky.actor.getProfile?actor="+url.QueryEscape(did), &amp;profile)
+	return profile.FollowersCount, err
+}
+
+// Ask Constellation: how many app.bsky.graph.follow records have a "subject" pointing at this DID.
+func constellationCount() (int, error) {
+	query := url.Values{"subject": {did}, "source": {"app.bsky.graph.follow:subject"}}
+	var result struct {
+		Total int `json:"total"`
+	}
+	err := getJSON("https://constellation.microcosm.blue/xrpc/blue.microcosm.links.getBacklinksCount?"+query.Encode(), &amp;result)
+	return result.Total, err
+}
+
+func main() {
+	for _, appView := range []string{"https://public.api.bsky.app", "https://api.blacksky.community"} {
+		count, err := appViewCount(appView)
+		if nil != err {
+			fmt.Printf("%-34s error: %s\n", appView, err)
+			continue
+		}
+		fmt.Printf("%-34s %d\n", appView, count)
+	}
+
+	count, err := constellationCount()
+	if nil != err {
+		fmt.Printf("%-34s error: %s\n", "constellation.microcosm.blue", err)
+		return
+	}
+	fmt.Printf("%-34s %d\n", "constellation.microcosm.blue", count)
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Running it, on November 22nd, 2026, printed:
+		</p>
+		<figure>
+			<pre>
+https://public.api.bsky.app        292
+https://api.blacksky.community     196
+constellation.microcosm.blue       134
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>No login is needed for any of these.</li>
+			<li>The AppViews are asked with <code>app.bsky.actor.getProfile</code>, and the count is its <code>followersCount</code> field.</li>
+			<li>Constellation is asked with <code>blue.microcosm.links.getBacklinksCount</code>, with <code>source</code> set to <code>app.bsky.graph.follow:subject</code>.</li>
+			<li>Constellation asks that you put your project name and contact in your <code>User-Agent</code> header. (This example does not, to keep it short.)</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<ol>
+			<li>A follow is an <code>app.bsky.graph.follow</code> record, stored in the <em>follower's</em> repository.</li>
+			<li>So, no <strong><abbr title="Personal Data Server">PDS</abbr></strong> knows an account's followers — only who the account follows.</li>
+			<li>To count followers, you have to find follow records across the whole network — by checking every repository, by indexing the firehose (what AppViews do), or by asking a backlink index (like Constellation).</li>
+			<li>Different services give different numbers, because of coverage, policy, and timing.</li>
+			<li>So, a follower count is an estimate — not a fact.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><code>app.bsky.graph.follow</code> lexicon — the record <code>at://did:plc:4v4y5r3lwsbtmsxhile2ljac/com.atproto.lexicon.schema/app.bsky.graph.follow</code> (fetched November 22nd, 2026)</li>
+			<li><a href="https://constellation.microcosm.blue/">Constellation</a> (microcosm) — home page and <abbr title="Application Programming Interface">API</abbr> documentation (fetched November 22nd, 2026)</li>
+			<li>Live requests, November 22nd, 2026: <code>com.atproto.repo.listRecords</code> (<code>app.bsky.graph.follow</code>) on <code>puffball.us-east.host.bsky.network</code>; <code>app.bsky.actor.getProfile</code> on <code>public.api.bsky.app</code> and <code>api.blacksky.community</code>; <code>blue.microcosm.links.getBacklinksCount</code>, <code>/links/count</code>, and <code>/links/count/distinct-dids</code> on <code>constellation.microcosm.blue</code></li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
