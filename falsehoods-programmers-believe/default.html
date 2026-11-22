@@ -462,6 +462,14 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>A user's <abbr title="Personal Data Server">PDS</abbr> knows who follows them.</strong></p>
+				<p>
+					A follow is an <code>app.bsky.graph.follow</code> record — stored in the <em>follower's</em> repository, with the followed account's <strong><abbr title="decentralized identifier">DID</abbr></strong> as its <code>subject</code>.
+					So, a user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> knows exactly who the user <em>follows</em>, but not who follows <em>them</em> — those records are spread across everyone else's repositories, on every <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+					(See: <a href="../how-to/follower-count/">How-To Count an <abbr title="AT-Protocol">ATProto</abbr> Account's Followers</a>.)
+				</p>
+			</li>
+			<li>
 				<p><strong>A follower count is a fact.</strong></p>
 				<p>
 					It is one <strong>AppView</strong>'s opinion.
@@ -507,7 +515,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="52">
+		<ol start="53">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
