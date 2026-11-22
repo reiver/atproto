@@ -539,11 +539,43 @@
 		</ol>
 	</section>
 	<section>
+		<h1>Compared to ActivityPub, the Fediverse, and Mastodon</h1>
+		<p>
+			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
+		</p>
+		<ol start="55">
+			<li>
+				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
+				<p>
+					<strong><abbr title="decentralized identifier">DID</abbr> documents</strong> are <a href="/json-ld/"><abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr></a>.
+					<code>plc.directory</code> serves them with the content type <code>application/did+ld+json</code>, and each one starts with an <code>@context</code>:
+				</p>
+				<figure>
+					<pre>
+"@context": [
+  "https://www.w3.org/ns/did/v1",
+  "https://w3id.org/security/multikey/v1",
+  "https://w3id.org/security/suites/secp256k1-2019/v1"
+]
+					</pre>
+				</figure>
+				<p>
+					(That is from <code>plc.directory/did:plc:scewmn2pl3oz36mxme2b6czz</code>.
+					A <code>did:web</code> document has one too — for example, <code>api.bsky.app/.well-known/did.json</code>.)
+				</p>
+				<p>
+					What is true is that <strong><abbr title="AT-Protocol">ATProto</abbr></strong>'s <em>own</em> data — records, <strong>lexicons</strong>, <strong>XRPC</strong> — is not <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.
+					And, <strong><abbr title="AT-Protocol">ATProto</abbr></strong> software usually reads <strong><abbr title="decentralized identifier">DID</abbr> documents</strong> as plain <abbr title="JavaScript Object Notation">JSON</abbr> — the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="decentralized identifier">DID</abbr></strong> specification says which fields to read, and does not call for <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr> processing.
+				</p>
+			</li>
+		</ol>
+	</section>
+	<section>
 		<h1>Spaces (Permissioned Data)</h1>
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="55">
+		<ol start="56">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
