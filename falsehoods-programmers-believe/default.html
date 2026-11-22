@@ -298,6 +298,20 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>A user's <abbr title="Personal Data Server">PDS</abbr> builds (or renders) their timeline.</strong></p>
+				<p>
+					The timeline (<code>app.bsky.feed.getTimeline</code>) is built by an <strong><a href="../service/appview/">AppView</a></strong>.
+					The <strong><abbr title="Personal Data Server">PDS</abbr></strong> just forwards the app's request to it.
+					And, no server <em>renders</em> it — the <strong>AppView</strong> returns <abbr title="JavaScript Object Notation">JSON</abbr>, and the app (on the user's phone or computer) renders that.
+				</p>
+				<p>
+					(This one used to be closer to true.
+					Bluesky's feed generator starter kit still says “In the future, the PDS will hydrate the feed with the help of an App View, but for now, the PDS handles hydration itself.”
+					Today, the <strong>AppView</strong> does it.
+					See: <a href="../service/feed-generator/"><abbr title="AT-Protocol">ATProto</abbr> Feed Generator</a>.)
+				</p>
+			</li>
+			<li>
 				<p><strong>Bluesky's <abbr title="Personal Data Server">PDS</abbr> software is the only <abbr title="Personal Data Server">PDS</abbr> software.</strong></p>
 				<p>
 					Any server that implements the right end-points is a <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
@@ -308,7 +322,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="25">
+		<ol start="26">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -380,7 +394,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="35">
+		<ol start="36">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -433,7 +447,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="42">
+		<ol start="43">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -472,7 +486,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="47">
+		<ol start="48">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -543,7 +557,7 @@
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="55">
+		<ol start="56">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -655,7 +669,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="63">
+		<ol start="64">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
