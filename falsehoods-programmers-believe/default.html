@@ -318,11 +318,24 @@
 					(For example, the Blacksky team's <a href="https://github.com/blacksky-algorithms/rsky">rsky</a> project, written in Rust, includes <code>rsky-pds</code>.)
 				</p>
 			</li>
+			<li>
+				<p><strong>Self-hosting a <abbr title="Personal Data Server">PDS</abbr> means you have to index the entire network.</strong></p>
+				<p>
+					A <strong><abbr title="Personal Data Server">PDS</abbr></strong> only stores its <em>own</em> accounts' data.
+					Indexing the network is the job of <strong><a href="../service/relay/">relays</a></strong> and <strong><a href="../service/appview/">AppViews</a></strong> — a self-hosted <strong><abbr title="Personal Data Server">PDS</abbr></strong> uses someone else's.
+					(In Bluesky's <strong><abbr title="Personal Data Server">PDS</abbr></strong> software, <code>PDS_CRAWLERS</code> defaults to <code>https://bsky.network</code>, and <code>PDS_BSKY_APP_VIEW_URL</code> defaults to <code>https://api.bsky.app</code>.)
+				</p>
+				<p>
+					That is why the hardware is small.
+					The <a href="https://github.com/bluesky-social/pds">official <strong><abbr title="Personal Data Server">PDS</abbr></strong> instructions</a> recommend 1 <abbr title="gigabyte">GB</abbr> of memory, 1 <abbr title="Central Processing Unit">CPU</abbr> core, and a 20 <abbr title="gigabyte">GB</abbr> <abbr title="Solid State Drive">SSD</abbr> — for 1 to 20 users.
+					(See: <a href="../service/pds/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="26">
+		<ol start="27">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -394,7 +407,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="36">
+		<ol start="37">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -447,7 +460,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="43">
+		<ol start="44">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -486,7 +499,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="48">
+		<ol start="49">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -557,7 +570,7 @@
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="56">
+		<ol start="57">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -669,7 +682,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="64">
+		<ol start="65">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
@@ -729,6 +742,7 @@
 			<li><a href="https://atproto.com/specs/oauth">AT Protocol: OAuth</a> — entryways</li>
 			<li><a href="https://atproto.com/guides/glossary">AT Protocol: Glossary</a></li>
 			<li><a href="https://github.com/blacksky-algorithms/rsky">blacksky-algorithms/rsky</a> — includes <code>rsky-pds</code></li>
+			<li><a href="https://github.com/bluesky-social/pds">bluesky-social/pds</a> — README (server recommendations, environment variables)</li>
 			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a></li>
 			<li>Mastodon documentation — <a href="https://docs.joinmastodon.org/spec/webfinger/">WebFinger</a>, <a href="https://docs.joinmastodon.org/user/moving/">Moving or leaving accounts</a>, and <a href="https://docs.joinmastodon.org/spec/security/">Security</a> (<abbr title="HyperText Transfer Protocol">HTTP</abbr> Signatures)</li>
 			<li><a href="https://www.w3.org/TR/activitypub/">W3C ActivityPub</a> — delivery, and verification</li>
