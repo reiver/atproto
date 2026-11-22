@@ -445,6 +445,19 @@ equipment.rpg.item
 				<p>
 					It is whatever the client put there.
 					The <code>app.bsky.feed.post</code> lexicon describes it as a “Client-declared timestamp”.
+					A client can set it to any time — past or future.
+				</p>
+				<p>
+					When a record was actually seen is tracked separately, by the services that see it:
+				</p>
+				<ul>
+					<li>the firehose's <code>#commit</code> event has a <code>time</code> — “Timestamp of when this message was originally broadcast”,</li>
+					<li>the commit's <code>rev</code> is a <abbr title="Timestamp Identifier">TID</abbr>, which a <strong><abbr title="Personal Data Server">PDS</abbr></strong> “should use the current wall time” to make (from the sync specification), and</li>
+					<li>an <strong><a href="../service/appview/">AppView</a></strong>'s post view has an <code>indexedAt</code> — when <em>that</em> <strong>AppView</strong> indexed it.</li>
+				</ul>
+				<p>
+					For example, for one of <code>@bsky.app</code>'s posts, <code>public.api.bsky.app</code> reported <code>createdAt</code> as <code>2026-11-19T18:33:36.813Z</code>, and <code>indexedAt</code> as <code>2026-11-19T18:33:38.543Z</code> — close, here, but nothing requires them to be.
+					(Even these are each one service's view — a different <strong>AppView</strong> may have indexed it at a different time.)
 				</p>
 			</li>
 			<li>
