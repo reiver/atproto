@@ -120,11 +120,36 @@
 					(See: <a href="../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
 				</p>
 			</li>
+			<li>
+				<p><strong>A <code>did:plc</code> is case-insensitive — so <code>DID:PLC:…</code> or <code>did:plc:Z72I7HDYNMK6R22Z27H6TVUR</code> is fine.</strong></p>
+				<p>
+					The <code>did:</code> and the method name (<code>plc</code>) must be lowercase — “The URI starts with lowercase did:”, and “The method segment is one or more lowercase letters”.
+					And, a <code>did:plc</code> identifier is lowercase too: “the entire identifier is lower-case (and should be normalized to lower-case)” (from the <code>did:plc</code> specification).
+					The <abbr title="AT-Protocol">ATProto</abbr> specification says “protocol implementations should reject DIDs with invalid casing.”
+					(<code>plc.directory</code> answered <code>did:plc:Z72I7HDYNMK6R22Z27H6TVUR</code>, <code>did:PLC:…</code>, and <code>DID:PLC:…</code> with <code>400</code> “Resolution of non-PLC DIDs not supported”.)
+				</p>
+			</li>
+			<li>
+				<p><strong><abbr title="decentralized identifier">DID</abbr>s are case-sensitive — so <code>did:plc:abc…</code> and <code>did:plc:ABC…</code> are 2 different accounts.</strong></p>
+				<p>
+					For <code>did:plc</code>, the uppercase one is not a different <strong><abbr title="decentralized identifier">DID</abbr></strong> — it is not a valid <code>did:plc</code> at all, since its identifier is lowercase-only base32.
+					The <abbr title="AT-Protocol">ATProto</abbr> specification says “the currently-supported methods are not case sensitive, and could be safely lowercased”, and that “It is permissible to attempt case normalization when receiving user-controlled input, such as when parsing public URL path components, or text input fields.”
+					So: reject bad casing in protocol data; lowercasing what a user typed is fine.
+				</p>
+			</li>
+			<li>
+				<p><strong>If a <abbr title="decentralized identifier">DID</abbr> parser accepts it, it is a valid <abbr title="decentralized identifier">DID</abbr>.</strong></p>
+				<p>
+					A generic <strong><abbr title="decentralized identifier">DID</abbr></strong> parser only checks the generic syntax — which allows uppercase in the identifier (the test vectors list <code>did:method:VAL</code> as valid).
+					The <a href="https://github.com/bluesky-social/indigo">indigo</a> library's <code>syntax.ParseDID</code> accepts <code>did:plc:Z72I7HDYNMK6R22Z27H6TVUR</code> — but <code>plc.directory</code> rejects it.
+					Generic syntax is not the same as a valid <code>did:plc</code>.
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="10">
+		<ol start="13">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -173,7 +198,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="16">
+		<ol start="19">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -245,7 +270,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="26">
+		<ol start="29">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -298,7 +323,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="33">
+		<ol start="36">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -337,7 +362,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="38">
+		<ol start="41">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -391,7 +416,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="44">
+		<ol start="47">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
@@ -439,11 +464,13 @@
 		<ul>
 			<li>Patrick McKenzie, <a href="https://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/">“Falsehoods Programmers Believe About Names”</a> (June 17th, 2010) — the original</li>
 			<li><a href="https://atproto.com/specs/account">AT Protocol: Accounts</a> — immutable <abbr title="decentralized identifier">DID</abbr>s, account status</li>
+			<li><a href="https://atproto.com/specs/did">AT Protocol: DID</a> — <abbr title="decentralized identifier">DID</abbr> syntax and casing</li>
+			<li><a href="https://github.com/did-method-plc/did-method-plc"><code>did:plc</code> method specification</a> (v0.3.0, December 2025) — identifier syntax</li>
 			<li><a href="https://atproto.com/specs/record-key">AT Protocol: Record Key</a></li>
 			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a></li>
 			<li><a href="https://atproto.com/specs/data-model">AT Protocol: Data Model</a></li>
 			<li><a href="https://atproto.com/specs/lexicon">AT Protocol: Lexicon</a></li>
-			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a> and <a href="https://github.com/bluesky-social/atproto-interop-tests">atproto-interop-tests</a></li>
+			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a> and <a href="https://github.com/bluesky-social/atproto-interop-tests">atproto-interop-tests</a> (<abbr title="Namespaced Identifier">NSID</abbr> and <abbr title="decentralized identifier">DID</abbr> syntax vectors)</li>
 			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a></li>
 			<li><a href="https://atproto.com/specs/oauth">AT Protocol: OAuth</a> — entryways</li>
 			<li><a href="https://atproto.com/guides/glossary">AT Protocol: Glossary</a></li>
