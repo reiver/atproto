@@ -86,6 +86,15 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>A handle is a third-level domain — like <code>alice.bsky.social</code>, <code>alice.blacksky.app</code>, or <code>alice.myatproto.social</code>.</strong></p>
+				<p>
+					A handle can have any number of segments, as long as there are at least 2.
+					<code>example.com</code> is a valid handle — and so is <code>apple.banana.cherry.example.com</code>.
+					The handle specification only says “there must be at least two segments” (so a bare top-level domain like <code>com</code> is not allowed), each segment can be 1 to 63 characters, and the whole handle can be at most 253 characters.
+					Its own examples include <code>a.co</code>, <code>8.cn</code>, and <code>XX.LCS.MIT.EDU</code>; and the official test vectors include <code>john.test.bsky.app</code>, and a valid handle with 10 segments.
+				</p>
+			</li>
+			<li>
 				<p><strong>Handles are resolved with <abbr title="Domain Name System">DNS</abbr>.</strong></p>
 				<p>
 					With <abbr title="Domain Name System">DNS</abbr> (a <code>TXT</code> record at <code>_atproto.&lt;handle&gt;</code>) <em>or</em> <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> (<code>/.well-known/atproto-did</code>).
@@ -111,7 +120,7 @@
 	</section>
 	<section>
 		<h1>DIDs</h1>
-		<ol start="7">
+		<ol start="8">
 			<li>
 				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
 				<p>
@@ -161,7 +170,7 @@
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="13">
+		<ol start="14">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -210,7 +219,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="19">
+		<ol start="20">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -282,7 +291,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="29">
+		<ol start="30">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -335,7 +344,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="36">
+		<ol start="37">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -374,7 +383,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="41">
+		<ol start="42">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -428,7 +437,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="47">
+		<ol start="48">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
@@ -476,13 +485,14 @@
 		<ul>
 			<li>Patrick McKenzie, <a href="https://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/">“Falsehoods Programmers Believe About Names”</a> (June 17th, 2010) — the original</li>
 			<li><a href="https://atproto.com/specs/account">AT Protocol: Accounts</a> — immutable <abbr title="decentralized identifier">DID</abbr>s, account status</li>
+			<li><a href="https://atproto.com/specs/handle">AT Protocol: Handle</a> — handle syntax</li>
 			<li><a href="https://atproto.com/specs/did">AT Protocol: DID</a> — <abbr title="decentralized identifier">DID</abbr> syntax and casing</li>
 			<li><a href="https://github.com/did-method-plc/did-method-plc"><code>did:plc</code> method specification</a> (v0.3.0, December 2025) — identifier syntax</li>
 			<li><a href="https://atproto.com/specs/record-key">AT Protocol: Record Key</a></li>
 			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a></li>
 			<li><a href="https://atproto.com/specs/data-model">AT Protocol: Data Model</a></li>
 			<li><a href="https://atproto.com/specs/lexicon">AT Protocol: Lexicon</a></li>
-			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a> and <a href="https://github.com/bluesky-social/atproto-interop-tests">atproto-interop-tests</a> (<abbr title="Namespaced Identifier">NSID</abbr> and <abbr title="decentralized identifier">DID</abbr> syntax vectors)</li>
+			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a> and <a href="https://github.com/bluesky-social/atproto-interop-tests">atproto-interop-tests</a> (<abbr title="Namespaced Identifier">NSID</abbr>, <abbr title="decentralized identifier">DID</abbr>, and handle syntax vectors)</li>
 			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a></li>
 			<li><a href="https://atproto.com/specs/oauth">AT Protocol: OAuth</a> — entryways</li>
 			<li><a href="https://atproto.com/guides/glossary">AT Protocol: Glossary</a></li>
