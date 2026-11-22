@@ -90,6 +90,22 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>You can trust a handle you saw five minutes ago.</strong></p>
+				<p>
+					A handle can change at any moment.
+					The user can switch to a new handle.
+					The domain's owner can point it at a different <strong><abbr title="decentralized identifier">DID</abbr></strong> — or the domain can expire, and be registered by someone else.
+					Or, its <abbr title="Domain Name System">DNS</abbr> record or <code>/.well-known/atproto-did</code> file can just disappear, and the handle stops resolving.
+					The handle specification says “If the handle for a known DID is confirmed to no longer resolve, it should be marked as invalid.”
+				</p>
+				<p>
+					So, a handle → <strong><abbr title="decentralized identifier">DID</abbr></strong> mapping is only as good as when you last checked it.
+					The specification recommends caching handle resolution “up to some lifetime”, and re-resolving “periodically”.
+					Watch the firehose for <code>#identity</code> events, which announce handle changes.
+					And, never use a cached handle to decide <em>who</em> someone is (for example, for permissions) — use the <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+				</p>
+			</li>
+			<li>
 				<p><strong>Every user has a handle.</strong></p>
 				<p>
 					An account might have no handle in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> (no <code>at://</code> entry in <code>alsoKnownAs</code>), or a handle that no longer resolves back to it.
@@ -159,7 +175,7 @@
 	</section>
 	<section>
 		<h1>DIDs</h1>
-		<ol start="11">
+		<ol start="12">
 			<li>
 				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
 				<p>
@@ -243,7 +259,7 @@
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="18">
+		<ol start="19">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -292,7 +308,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="24">
+		<ol start="25">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -364,7 +380,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="34">
+		<ol start="35">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -417,7 +433,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="41">
+		<ol start="42">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -456,7 +472,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="46">
+		<ol start="47">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -527,7 +543,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="54">
+		<ol start="55">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
