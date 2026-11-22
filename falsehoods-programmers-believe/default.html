@@ -337,6 +337,41 @@
 		<h1>Records and Repositories</h1>
 		<ol start="27">
 			<li>
+				<p><strong>Every record on the network is a Bluesky post.</strong></p>
+				<p>
+					A repository can hold records of <em>any</em> type — any <strong><a href="../lexicon/">lexicon</a></strong>, from any app — all mixed together in the same user's repository.
+					Calendar events, bookmarks, blog posts, game state, workout logs, or a custom app's own schema: each is just another collection.
+					(And, by default, a <strong><abbr title="Personal Data Server">PDS</abbr></strong> accepts records whose lexicon it does not know — “optimistic validation”.)
+				</p>
+				<p>
+					For example, my repository (<code>reiver.blacksky.team</code>) has these collections, according to <code>com.atproto.repo.describeRepo</code>:
+				</p>
+				<figure>
+					<pre>
+actor.rpg.generator
+actor.rpg.sprite
+actor.rpg.stats
+app.bsky.actor.link
+app.bsky.actor.profile
+app.bsky.feed.generator
+app.bsky.feed.like
+app.bsky.feed.post
+app.bsky.feed.repost
+app.bsky.graph.follow
+app.bsky.graph.list
+app.bsky.graph.listitem
+chat.bsky.actor.declaration
+equipment.rpg.item
+					</pre>
+				</figure>
+				<p>
+					Only one of those 14 collections is Bluesky posts (<code>app.bsky.feed.post</code>).
+					Even among Bluesky's own record types, most are not posts — likes, reposts, follows, lists, a profile.
+					And, <code>actor.rpg.*</code> and <code>equipment.rpg.item</code> are from a different app altogether.
+					(See: <a href="../record/"><abbr title="AT-Protocol">ATProto</abbr> Record</a>.)
+				</p>
+			</li>
+			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
 					The author is the <strong>repository</strong> the record is in.
@@ -407,7 +442,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="37">
+		<ol start="38">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -460,7 +495,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="44">
+		<ol start="45">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -499,7 +534,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="49">
+		<ol start="50">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -583,7 +618,7 @@
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="58">
+		<ol start="59">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -695,7 +730,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="66">
+		<ol start="67">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
