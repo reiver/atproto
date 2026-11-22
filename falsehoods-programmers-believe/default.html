@@ -422,6 +422,29 @@ equipment.rpg.item
 				</p>
 			</li>
 			<li>
+				<p><strong><abbr title="AT-Protocol">ATProto</abbr> <abbr title="JavaScript Object Notation">JSON</abbr> is just regular <abbr title="JavaScript Object Notation">JSON</abbr>.</strong></p>
+				<p>
+					It is <abbr title="JavaScript Object Notation">JSON</abbr> with extra rules, from the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> data model — the same data model that is also written as DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr> (the successor to DAG-<abbr title="Concise Binary Object Representation">CBOR</abbr>) for storing, signing, and hashing.
+					The differences from regular <abbr title="JavaScript Object Notation">JSON</abbr>:
+				</p>
+				<ul>
+					<li><strong>no floating-point numbers</strong> — only integers, and those are best kept to 53 bits (between <code>-9007199254740991</code> and <code>9007199254740991</code>), for JavaScript,</li>
+					<li><strong>links</strong> are written as <code>{"$link": "&lt;CID&gt;"}</code>,</li>
+					<li><strong>bytes</strong> are written as <code>{"$bytes": "&lt;base64&gt;"}</code> (plain base64, not <abbr title="Uniform Resource Locator">URL</abbr>-safe; padding optional),</li>
+					<li><strong>blobs</strong> are written as <code>{"$type": "blob", "ref": {"$link": …}, "mimeType": …, "size": …}</code>,</li>
+					<li><strong>field names starting with <code>$</code> are reserved</strong> for the protocol (<code>$type</code>, <code>$link</code>, <code>$bytes</code>) — and unknown <code>$</code> fields should be ignored,</li>
+					<li><strong>empty field names are not allowed</strong>,</li>
+					<li><strong>strings must be valid <abbr title="Unicode Transformation Format 8-bit">UTF-8</abbr></strong>,</li>
+					<li><strong>missing, <code>null</code>, and “false-y” are 3 different things</strong>, and <code>null</code> is only allowed where the lexicon says <code>nullable</code>, and</li>
+					<li><strong>it is not byte-exact</strong> — key order and spacing do not matter, so it cannot be hashed directly; the DRISL-<abbr title="Concise Binary Object Representation">CBOR</abbr> form is what gets hashed and signed.</li>
+				</ul>
+				<p>
+					It is not DAG-<abbr title="JavaScript Object Notation">JSON</abbr> either — the data model specification says <strong><abbr title="AT-Protocol">ATProto</abbr></strong> uses <code>$link</code> “as the key name instead of <code>/</code>”.
+					And, there are practical limits too — for example, Bluesky's data validation guide suggests at most 32 levels of nesting, and 1 <abbr title="mebibyte">MiB</abbr> per record (as <abbr title="Concise Binary Object Representation">CBOR</abbr>).
+					(See: <a href="../record/"><abbr title="AT-Protocol">ATProto</abbr> Record</a>.)
+				</p>
+			</li>
+			<li>
 				<p><strong>Records can contain floating-point numbers.</strong></p>
 				<p>
 					Floats are not allowed in the data model — they do not round-trip reliably, and the bytes must be exact for hashing.
@@ -465,7 +488,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="41">
+		<ol start="42">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -518,7 +541,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="48">
+		<ol start="49">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -557,7 +580,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="53">
+		<ol start="54">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -641,7 +664,7 @@ equipment.rpg.item
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="62">
+		<ol start="63">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -753,7 +776,7 @@ equipment.rpg.item
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="70">
+		<ol start="71">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
@@ -807,6 +830,7 @@ equipment.rpg.item
 			<li><a href="https://atproto.com/specs/record-key">AT Protocol: Record Key</a></li>
 			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a></li>
 			<li><a href="https://atproto.com/specs/data-model">AT Protocol: Data Model</a></li>
+			<li><a href="https://atproto.com/guides/data-validation">AT Protocol: Data Validation</a> (guide) — <abbr title="Unicode Transformation Format 8-bit">UTF-8</abbr>, empty keys, 53-bit integers, size and nesting limits</li>
 			<li><a href="https://atproto.com/specs/lexicon">AT Protocol: Lexicon</a></li>
 			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a> and <a href="https://github.com/bluesky-social/atproto-interop-tests">atproto-interop-tests</a> (<abbr title="Namespaced Identifier">NSID</abbr>, <abbr title="decentralized identifier">DID</abbr>, and handle syntax vectors)</li>
 			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a></li>
