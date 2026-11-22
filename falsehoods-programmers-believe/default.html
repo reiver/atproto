@@ -77,6 +77,19 @@
 				</p>
 			</li>
 			<li>
+				<p><strong>When a user changes their handle, the first part stays the same — like <code>reiver.bsky.social</code> → <code>reiver.myatproto.social</code> → <code>reiver.blacksky.team</code>.</strong></p>
+				<p>
+					A new handle does not have to have anything in common with the old one.
+					<code>joe.bsky.social</code> → <code>joeblow.example.com</code> → <code>bbqlover.net</code> would be fine.
+					Changing a handle just means pointing the account at a different domain — <code>com.atproto.identity.updateHandle</code> takes any valid handle, and only “Verifies handle validity”.
+				</p>
+				<p>
+					For example, Bluesky's own account (<code>did:plc:z72i7hdynmk6r22z27h6tvur</code>) started out as <code>bluesky-team.bsky.social</code>, and then became <code>bsky.app</code>.
+					You can see that in its audit log at <a target="_blank" href="https://plc.directory/did:plc:z72i7hdynmk6r22z27h6tvur/log/audit">plc.directory/did:plc:z72i7hdynmk6r22z27h6tvur/log/audit</a>.
+					(Another reason to key users by <strong><abbr title="decentralized identifier">DID</abbr></strong>, and not by any part of their handle.)
+				</p>
+			</li>
+			<li>
 				<p><strong>Every user has a handle.</strong></p>
 				<p>
 					An account might have no handle in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> (no <code>at://</code> entry in <code>alsoKnownAs</code>), or a handle that no longer resolves back to it.
@@ -94,7 +107,7 @@
 					Any Internet domain can be a handle.
 					And, other <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> hand out their own
 					—
-					the <code>blacksky.app</code> <strong><abbr title="Personal Data Server">PDS</abbr></strong>, for example, offers <code>.blacksky.app</code>, <code>.myatproto.social</code>, <code>.cryptoanarchy.social</code>, and others.
+					the <code>blacksky.app</code> <strong><abbr title="Personal Data Server">PDS</abbr></strong>, for example, offers <code>.blacksky.app</code>, <code>.myatproto.social</code>, <code>.cryptoanarchy.network</code>, and others.
 				</p>
 			</li>
 			<li>
@@ -132,7 +145,7 @@
 	</section>
 	<section>
 		<h1>DIDs</h1>
-		<ol start="9">
+		<ol start="10">
 			<li>
 				<p><strong>Every <abbr title="decentralized identifier">DID</abbr> is a <code>did:plc</code>.</strong></p>
 				<p>
@@ -182,7 +195,7 @@
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="15">
+		<ol start="16">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -231,7 +244,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="21">
+		<ol start="22">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -303,7 +316,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="31">
+		<ol start="32">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -356,7 +369,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="38">
+		<ol start="39">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -395,7 +408,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="43">
+		<ol start="44">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -449,7 +462,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="49">
+		<ol start="50">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
