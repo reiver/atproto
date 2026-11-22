@@ -568,6 +568,86 @@
 					And, <strong><abbr title="AT-Protocol">ATProto</abbr></strong> software usually reads <strong><abbr title="decentralized identifier">DID</abbr> documents</strong> as plain <abbr title="JavaScript Object Notation">JSON</abbr> — the <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong><abbr title="decentralized identifier">DID</abbr></strong> specification says which fields to read, and does not call for <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr> processing.
 				</p>
 			</li>
+			<li>
+				<p><strong>Like on Mastodon, an <abbr title="AT-Protocol">ATProto</abbr> handle includes the user's server — <code>@user@server</code>.</strong></p>
+				<p>
+					On Mastodon, a user's full address is a user name <em>and</em> a server — Mastodon's documentation says it is “in the form <code>@username@domain</code>”, and that “<code>@user@example.com</code> is not the same as <code>@user@example.org</code>.”
+				</p>
+				<p>
+					An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> handle is just one domain name — like <code>reiver.blacksky.team</code> — and it says nothing about the user's server.
+					The server (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) is found separately, from the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+					(A handle shown as <code>@reiver.blacksky.team</code> has just one <code>@</code>, as a decoration.)
+				</p>
+			</li>
+			<li>
+				<p><strong><abbr title="AT-Protocol">ATProto</abbr> has nothing like a Fediverse “instance”.</strong></p>
+				<p>
+					It does — the <strong><a href="../service/pds/">Personal Data Server</a></strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>).
+					Like an instance, a <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts many users' accounts (“Many PDSes will host multiple users”, says the glossary), is run by someone, decides who can sign up (for example, with invite codes), has its own terms of service and privacy policy (listed in <code>com.atproto.server.describeServer</code>), and can take accounts down (the <code>takendown</code> account status).
+				</p>
+				<p>
+					The difference is that it is more hidden.
+					It is not part of the user's identity or handle — <code>reiver.blacksky.team</code> does not say which <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts it.
+					It is not what decides what a user sees — that is mostly the <strong><a href="../service/appview/">AppView</a></strong>.
+					And, a user can move to another <strong><abbr title="Personal Data Server">PDS</abbr></strong> while keeping the same <strong><abbr title="decentralized identifier">DID</abbr></strong>, handle, posts, and followers.
+				</p>
+			</li>
+			<li>
+				<p><strong>Like Mastodon, <abbr title="AT-Protocol">ATProto</abbr> looks up handles with WebFinger.</strong></p>
+				<p>
+					Mastodon uses WebFinger (<code>/.well-known/webfinger</code>) — its documentation says “WebFinger is required for fully interoperating with Mastodon.”
+				</p>
+				<p>
+					<strong><abbr title="AT-Protocol">ATProto</abbr></strong> does not.
+					A handle is resolved with a <abbr title="Domain Name System">DNS</abbr> <code>TXT</code> record at <code>_atproto.&lt;handle&gt;</code>, or with <code>https://&lt;handle&gt;/.well-known/atproto-did</code>.
+					(See: <a href="../how-to/resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>Like on Mastodon, when a user moves to a new server, their posts stay behind, and their followers have to be moved over.</strong></p>
+				<p>
+					On Mastodon, moving an account moves followers — but Mastodon's documentation says “Your posts will not be moved, due to technical limitations”, and that “Mastodon currently does not support importing posts or media”.
+					Moving also has to “force everyone to unfollow your current account and follow your new account”.
+				</p>
+				<p>
+					On <strong><abbr title="AT-Protocol">ATProto</abbr></strong>, moving to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong> includes “migrating data from the old PDS to the new PDS” (from the accounts specification) — the whole repository, posts and all.
+					And, the account keeps the same <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+					Since follow records point at the <strong><abbr title="decentralized identifier">DID</abbr></strong>, followers do not have to be moved at all.
+					(See: <a href="../service/pds/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong>Like ActivityPub servers, <abbr title="AT-Protocol">ATProto</abbr> servers send posts to each other's inboxes.</strong></p>
+				<p>
+					In ActivityPub, a server <em>pushes</em> each activity to its recipients — the ActivityPub specification describes it being “inserted into the actor's inbox (delivery)”, by <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>POST</code>.
+				</p>
+				<p>
+					In <strong><abbr title="AT-Protocol">ATProto</abbr></strong>, there are no inboxes.
+					A <strong><abbr title="Personal Data Server">PDS</abbr></strong> publishes every change on its own firehose, and services that want the data — <strong><a href="../service/relay/">relays</a></strong>, <strong><a href="../service/appview/">AppViews</a></strong>, etc — subscribe and pull it.
+					The <strong><abbr title="Personal Data Server">PDS</abbr></strong> does not need to know who its readers are.
+				</p>
+			</li>
+			<li>
+				<p><strong>Like in ActivityPub, to trust a copy of a post, you have to check it against the server it came from.</strong></p>
+				<p>
+					The ActivityPub specification says servers should do “something at least as robust as checking that the object appears as received at its origin”, and that “No particular mechanism for verification is authoritatively specified”.
+					(Mastodon uses <abbr title="HyperText Transfer Protocol">HTTP</abbr> Signatures, to check who <em>sent</em> an activity.)
+				</p>
+				<p>
+					<strong><abbr title="AT-Protocol">ATProto</abbr></strong> data checks itself.
+					Repository commits are signed with the account's key, and records are identified by their hash (<abbr title="Content IDentifier">CID</abbr>) — so a copy can be checked no matter who it came from.
+					The data model specification says this “makes it possible to redistribute content and trust copies even if coming from an untrusted party.”
+					(See: <a href="../record/"><abbr title="AT-Protocol">ATProto</abbr> Record</a>.)
+				</p>
+			</li>
+			<li>
+				<p><strong><abbr title="AT-Protocol">ATProto</abbr> and the Fediverse cannot talk to each other.</strong></p>
+				<p>
+					They are different protocols — but there are bridges.
+					For example, <a href="https://fed.brid.gy/docs">Bridgy Fed</a> describes itself as “a decentralized social network bridge. It connects the fediverse, the web, and the Atmosphere (Bluesky).”
+					With it, people on one network can follow, reply to, like, and repost people on the other.
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
@@ -575,7 +655,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="56">
+		<ol start="63">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
@@ -636,6 +716,9 @@
 			<li><a href="https://atproto.com/guides/glossary">AT Protocol: Glossary</a></li>
 			<li><a href="https://github.com/blacksky-algorithms/rsky">blacksky-algorithms/rsky</a> — includes <code>rsky-pds</code></li>
 			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a></li>
+			<li>Mastodon documentation — <a href="https://docs.joinmastodon.org/spec/webfinger/">WebFinger</a>, <a href="https://docs.joinmastodon.org/user/moving/">Moving or leaving accounts</a>, and <a href="https://docs.joinmastodon.org/spec/security/">Security</a> (<abbr title="HyperText Transfer Protocol">HTTP</abbr> Signatures)</li>
+			<li><a href="https://www.w3.org/TR/activitypub/">W3C ActivityPub</a> — delivery, and verification</li>
+			<li><a href="https://fed.brid.gy/docs">Bridgy Fed documentation</a></li>
 			<li>Live requests made while writing the other articles on this site (November 2026) — see each linked article's Sources</li>
 		</ul>
 	</section>
