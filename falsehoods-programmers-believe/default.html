@@ -653,6 +653,21 @@ equipment.rpg.item
 				</p>
 			</li>
 			<li>
+				<p><strong>Likes and replies live on the author's post.</strong></p>
+				<p>
+					They live in the repositories of the people who liked or replied.
+					A like is an <code>app.bsky.feed.like</code> record in the <em>liker's</em> repository, whose <code>subject</code> is a strong reference (<code>uri</code> and <code>cid</code>) to the post.
+					A reply is an <code>app.bsky.feed.post</code> record in the <em>replier's</em> repository, with a <code>reply</code> field pointing at the thread's <code>root</code> and the <code>parent</code> post.
+					(Reposts work the same way.)
+					The author's post record itself has no list of likes or replies, and no counts.
+				</p>
+				<p>
+					So, like and reply counts — and threads — are put together by services that index the network, like an <strong><a href="../service/appview/">AppView</a></strong> or a backlink index.
+					For example, for one of <code>@bsky.app</code>'s posts (<code>app.bsky.feed.post/3n2opitxdyc2j</code>), on November 22nd, 2026, <code>public.api.bsky.app</code> said 1951 likes and 774 replies — and so did the Constellation backlink index.
+					(For a recent post, they agree. For older ones, they may not — see the follower counts, below.)
+				</p>
+			</li>
+			<li>
 				<p><strong>A follower count is a fact.</strong></p>
 				<p>
 					It is one service's opinion.
@@ -720,7 +735,7 @@ equipment.rpg.item
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="65">
+		<ol start="66">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -832,7 +847,7 @@ equipment.rpg.item
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="73">
+		<ol start="74">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
