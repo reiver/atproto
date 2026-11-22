@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Personal Data Server (PDS): A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="open social web" />
+<meta name="category" content="pds" />
+<meta name="category" content="personal data server" />
+<meta name="category" content="repository" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">Service</a></li>
+		<li><a href="./" aria-current="page">Personal Data Server (<abbr title="Personal Data Server">PDS</abbr>)</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Personal Data Server (<abbr title="Personal Data Server">PDS</abbr>)</h1>
+			<p>
+				the server where an account — and its data — lives
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>) is a type of <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) service that <em>hosts</em> accounts.
+		It is one of the 3 core services of <strong><abbr title="AT-Protocol">ATProto</abbr></strong> — along with <strong><a href="../relay/">relays</a></strong> and <strong><a href="../appview/">AppViews</a></strong>.
+	</p>
+	<p>
+		The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> overview puts it this way:
+	</p>
+	<blockquote>
+		<p>
+			Personal Data Servers are your home in the cloud. They host your data, distribute it, manage your identity, and orchestrate requests to other services to give you your views.
+		</p>
+	</blockquote>
+	<p>
+		And, the glossary says:
+	</p>
+	<blockquote>
+		<p>
+			A PDS, or Personal Data Server, is a server that hosts a user. A PDS will always store the user's data repo and signing keys. It may also assign the user a handle and a DID. Many PDSes will host multiple users.
+		</p>
+	</blockquote>
+	<p>
+		<mark>A user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> is the <em>source of truth</em> for that user's data — everything else in the network (<strong>relays</strong>, <strong>AppViews</strong>, etc) only has copies.
+		But, a <strong><abbr title="Personal Data Server">PDS</abbr></strong> does <em>not</em> show you the rest of the network.
+		It only has its <em>own</em> accounts' data.
+		For everyone else's posts, likes, follower counts, etc, it forwards your app's requests to an <strong><a href="../appview/">AppView</a></strong>.</mark>
+	</p>
+	<p>
+		(Note that “personal” does not mean one server per person.
+		Most <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> host many accounts.)
+	</p>
+	<section>
+		<h1>What a PDS Does</h1>
+		<p>
+			The accounts specification lists the main things:
+		</p>
+		<blockquote>
+			<p>
+				All users in the atproto network have an "identity", based around a unique and immutable DID. Active users also have an "account" on a Personal Data Server (PDS). The PDS provides a number of network services, including repository hosting, authorization and authentication, and blob storage.
+			</p>
+		</blockquote>
+		<p>
+			So, a <strong><abbr title="Personal Data Server">PDS</abbr></strong> has these jobs:
+		</p>
+		<ol>
+			<li>hosting each account's <strong>repository</strong> (its records),</li>
+			<li>storing each account's <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> (images, videos, etc),</li>
+			<li>logging users in (authentication and authorization),</li>
+			<li>managing each account's <strong>identity</strong> (its signing key, and often its handle and <strong><abbr title="decentralized identifier">DID</abbr></strong>),</li>
+			<li>telling the network about changes (its firehose), and</li>
+			<li>forwarding requests to other services (service proxying).</li>
+		</ol>
+		<figure>
+			<pre>
+                     ┌───────────────────────────────────┐
+                     │                PDS                │
+┌───────┐  OAuth     │                                   │  firehose   ┌─────────┐
+│  app  │ ─────────► │  • accounts, logins               │ ──────────► │  relay  │
+└───────┘            │  • repositories (records)         │             └─────────┘
+                     │  • blobs (images, videos, etc)    │
+                     │  • signing keys                   │   proxied   ┌─────────┐
+                     │                                   │ ──────────► │ AppView │
+                     └───────────────────────────────────┘  requests   └─────────┘
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>Finding an Account's PDS</h1>
+		<p>
+			Every account has a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			Its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> says which <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts it — in the service entry whose <code>id</code> ends with <code>#atproto_pds</code>.
+			For example, here is (part of) the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> for <code>@bsky.app</code>:
+		</p>
+		<figure>
+			<pre>
+{
+  "id": "did:plc:z72i7hdynmk6r22z27h6tvur",
+  "alsoKnownAs": [
+    "at://bsky.app"
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:plc:z72i7hdynmk6r22z27h6tvur#atproto",
+      "type": "Multikey",
+      "controller": "did:plc:z72i7hdynmk6r22z27h6tvur",
+      "publicKeyMultibase": "zQ3shQo6TF2moaqMTrUZEM1jeuYRQXeHEx4evX9751y2qPqRA"
+    }
+  ],
+  "service": [
+    {
+      "id": "#atproto_pds",
+      "type": "AtprotoPersonalDataServer",
+      "serviceEndpoint": "https://puffball.us-east.host.bsky.network"
+    }
+  ]
+}
+			</pre>
+		</figure>
+		<p>
+			So, <code>@bsky.app</code>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong> is <code>https://puffball.us-east.host.bsky.network</code>.
+			(For the details, see: <a href="../../how-to/resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+		</p>
+		<p>
+			Notice the <code>#atproto</code> key, too.
+			That is the account's <em>signing key</em> — and the <strong><abbr title="Personal Data Server">PDS</abbr></strong> holds the matching private key (see below).
+		</p>
+		<p>
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> can describe itself, with <code>com.atproto.server.describeServer</code>.
+			For example, <code>puffball.us-east.host.bsky.network</code> says:
+		</p>
+		<figure>
+			<pre>
+{
+  "did": "did:web:puffball.us-east.host.bsky.network",
+  "availableUserDomains": [".bsky.social"],
+  "inviteCodeRequired": true,
+  "blobUploadLimit": 314572800,
+  "links": {
+    "privacyPolicy": "https://bsky.social/about/support/privacy-policy",
+    "termsOfService": "https://bsky.social/about/support/tos"
+  },
+  "contact": {}
+}
+			</pre>
+		</figure>
+		<p>
+			And, <code>blacksky.app</code> (the Blacksky team's <strong><abbr title="Personal Data Server">PDS</abbr></strong>) says:
+		</p>
+		<figure>
+			<pre>
+{
+  "inviteCodeRequired": false,
+  "phoneVerificationRequired": true,
+  "availableUserDomains": [".myatproto.social", ".blacksky.app", ".cryptoanarchy.network", ".latinsky.app", ".afrolatinsky.app", ".acorn.place"],
+  "links": {
+    "privacyPolicy": "https://www.blackskyweb.xyz/about/support/privacy-policy",
+    "termsOfService": "https://www.blackskyweb.xyz/about/support/tos"
+  },
+  "contact": {"email": "support@blacksky.app"},
+  "did": "did:web:blacksky.app"
+}
+			</pre>
+		</figure>
+		<p>
+			<code>availableUserDomains</code> lists the handle suffixes the <strong><abbr title="Personal Data Server">PDS</abbr></strong> can give out — for example, a new account on <code>blacksky.app</code> could get a handle like <code>alice.blacksky.app</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Job 1: Hosting Repositories</h1>
+		<p>
+			Each account's public data is stored in a <strong>repository</strong> — a collection of records (posts, likes, follows, profile, etc), grouped by collection (<code>app.bsky.feed.post</code>, <code>app.bsky.feed.like</code>, etc).
+		</p>
+		<p>
+			Each change to a <strong>repository</strong> makes a new <strong>commit</strong>, which is <em>signed</em> with the account's signing key.
+			The repository specification says:
+		</p>
+		<blockquote>
+			<p>
+				Commits are cryptographically signed, with rotatable signing keys, which allows recursive authentication of either the repository structure as a whole, or compact "proof chains" for individual records.
+			</p>
+		</blockquote>
+		<p>
+			The <strong><abbr title="Personal Data Server">PDS</abbr></strong> holds the private signing key, so that it can make those commits on the user's behalf.
+			And, since every commit is signed, anyone can check a copy of the data — no matter who they got it from — against the public key in the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+			That is what lets <strong>relays</strong> and <strong>AppViews</strong> pass the data around.
+		</p>
+		<p>
+			<em>Reading</em> a <strong>repository</strong> needs no login — it is public.
+			For example, <code>com.atproto.repo.describeRepo</code> for <code>@bsky.app</code> returns (in part):
+		</p>
+		<figure>
+			<pre>
+{
+  "handle": "bsky.app",
+  "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+  "collections": [
+    "app.bsky.actor.profile",
+    "app.bsky.actor.status",
+    "app.bsky.feed.generator",
+    "app.bsky.feed.like",
+    "app.bsky.feed.post",
+    …
+    "chat.bsky.actor.declaration"
+  ],
+  "handleIsCorrect": true
+}
+			</pre>
+		</figure>
+		<p>
+			<em>Writing</em> needs a login — and an app can only write to the logged-in user's <em>own</em> <strong>repository</strong>.
+			The main end-points are:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>Auth</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.repo.getRecord</code></td>
+						<td>none</td>
+						<td>get one record</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.listRecords</code></td>
+						<td>none</td>
+						<td>list the records in one collection</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.describeRepo</code></td>
+						<td>none</td>
+						<td>describe a <strong>repository</strong> — handle, <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, collections</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.createRecord</code></td>
+						<td>user</td>
+						<td>create a record</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.putRecord</code></td>
+						<td>user</td>
+						<td>create or replace a record</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.deleteRecord</code></td>
+						<td>user</td>
+						<td>delete a record</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.applyWrites</code></td>
+						<td>user</td>
+						<td>apply several creates, updates, and deletes at once</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			A whole <strong>repository</strong> can be downloaded as a single <strong><abbr title="Content Addressable Archive">CAR</abbr></strong> file, with <code>com.atproto.sync.getRepo</code>.
+			(See: <a href="../../how-to/backup-pds/">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Job 2: Storing Blobs</h1>
+		<p>
+			Images, videos, and other files are not stored <em>inside</em> records.
+			They are stored separately, as <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong>, and records refer to them by <abbr title="Content IDentifier">CID</abbr> (a hash).
+		</p>
+		<ul>
+			<li>An app uploads a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> with <code>com.atproto.repo.uploadBlob</code>, then creates a record that refers to it.</li>
+			<li>Anyone can download it with <code>com.atproto.sync.getBlob</code>, and list an account's <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong> with <code>com.atproto.sync.listBlobs</code>.</li>
+		</ul>
+		<p>
+			The <code>uploadBlob</code> lexicon says “The blob will be deleted if it is not referenced within a time window (eg, minutes).”
+			So, upload first, then create the record soon after.
+		</p>
+		<p>
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> sets its own size limit — <code>blobUploadLimit</code>, in <code>describeServer</code>.
+			(<code>puffball.us-east.host.bsky.network</code> says 314572800 bytes — 300 <abbr title="megabytes">MB</abbr> — which is also the default for Bluesky's <strong><abbr title="Personal Data Server">PDS</abbr></strong> software.)
+		</p>
+	</section>
+	<section>
+		<h1>Job 3: Logging Users In</h1>
+		<p>
+			Apps write to a user's <strong>repository</strong> by making authorized requests to the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The main way to get authorized is OAuth.
+			The OAuth specification says:
+		</p>
+		<blockquote>
+			<p>
+				OAuth is the primary mechanism in atproto for clients to make authorized requests to PDS instances.
+			</p>
+		</blockquote>
+		<p>
+			In OAuth terms, the <strong><abbr title="Personal Data Server">PDS</abbr></strong> is always the <em>Resource Server</em> (the server the requests go to).
+			The <em>Authorization Server</em> (the server that does the login) might be the <strong><abbr title="Personal Data Server">PDS</abbr></strong> itself — or a separate service, which the specification calls an <em>entryway</em>:
+		</p>
+		<blockquote>
+			<p>
+				Sometimes the PDS is also the "Authorization Server" - which services OAuth authorization flows and token requests - while in other situations a separate "entryway" service acts as the Authorization Server for multiple PDS instances.
+			</p>
+		</blockquote>
+		<p>
+			An app finds out which, from the <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s <code>/.well-known/oauth-protected-resource</code>.
+			Bluesky uses an entryway — <code>puffball.us-east.host.bsky.network</code> says:
+		</p>
+		<figure>
+			<pre>
+{
+  "resource": "https://puffball.us-east.host.bsky.network",
+  "authorization_servers": ["https://bsky.social"],
+  …
+}
+			</pre>
+		</figure>
+		<p>
+			While <code>blacksky.app</code> is its own Authorization Server:
+		</p>
+		<figure>
+			<pre>
+{
+  "resource": "https://blacksky.app",
+  "authorization_servers": ["https://blacksky.app"],
+  …
+}
+			</pre>
+		</figure>
+		<p>
+			(That is why Bluesky users log in at <code>bsky.social</code>, even though their <strong>repositories</strong> are on many different <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts, like <code>puffball.us-east.host.bsky.network</code>.)
+		</p>
+		<p>
+			There is also an older way — <code>com.atproto.server.createSession</code>, with a password or an <em>app password</em>.
+			The OAuth specification describes its broadest permission (<code>transition:generic</code>) as “equivalent to the previous "App Password" authorization level”.
+		</p>
+		<p>
+			The <strong><abbr title="Personal Data Server">PDS</abbr></strong> also handles the rest of the account itself — creating it (<code>com.atproto.server.createAccount</code>), email confirmation, password resets, deactivating, and deleting.
+			Most of that is under <code>com.atproto.server.*</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Job 4: Managing Identity</h1>
+		<p>
+			An account's identity is its <strong><abbr title="decentralized identifier">DID</abbr></strong> (and its handle).
+			The <strong><abbr title="Personal Data Server">PDS</abbr></strong> is closely involved:
+		</p>
+		<ul>
+			<li>It holds the account's <strong>signing key</strong> (the <code>#atproto</code> key in the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>).</li>
+			<li>For a <code>did:plc</code>, it often creates the <strong><abbr title="decentralized identifier">DID</abbr></strong>, and can update its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> (for example, with <code>com.atproto.identity.updateHandle</code>, <code>signPlcOperation</code>, and <code>submitPlcOperation</code>).</li>
+			<li>It may give the account a handle under one of its <code>availableUserDomains</code> — or the user can use their own domain.</li>
+		</ul>
+		<p>
+			But, the identity is not <em>owned</em> by the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The overview says:
+		</p>
+		<blockquote>
+			<p>
+				The signing key is entrusted to the PDS so that it can manage the user's data, but rotation keys can be controlled by the user, e.g. as a paper key. This makes it possible for the user to update their account to a new PDS without the original host's help.
+			</p>
+		</blockquote>
+		<p>
+			(The accounts specification also warns: “Users should take special care to select and assess their PDS host when they delegate management of their identity to that host (eg, when using a <code>did:plc</code>).”)
+		</p>
+	</section>
+	<section>
+		<h1>Job 5: Telling the Network About Changes</h1>
+		<p>
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> publishes every change to every account it hosts, as an event stream — its own <strong>firehose</strong> — at <code>com.atproto.sync.subscribeRepos</code>.
+			The sync specification says:
+		</p>
+		<blockquote>
+			<p>
+				PDS hosts provide a firehose that includes updates for all hosted accounts.
+			</p>
+		</blockquote>
+		<p>
+			<strong><a href="../relay/">Relays</a></strong> subscribe to many <strong><abbr title="Personal Data Server">PDS</abbr></strong> firehoses, and combine them into one.
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> asks relays to subscribe to it by calling <code>com.atproto.sync.requestCrawl</code> on them.
+			(In Bluesky's <strong><abbr title="Personal Data Server">PDS</abbr></strong> software, the <code>PDS_CRAWLERS</code> setting lists which relays to ask; the default is <code>https://bsky.network</code>.)
+		</p>
+		<figure>
+			<pre>
+┌───────┐
+│ PDS 1 │ ──────┐
+└───────┘       │
+┌───────┐       ▼
+│ PDS 2 │ ──► ┌───────┐     ┌─────────┐
+└───────┘     │ relay │ ──► │ AppView │
+┌───────┐     └───────┘     └─────────┘
+│ PDS 3 │ ──────▲
+└───────┘
+			</pre>
+		</figure>
+		<p>
+			The firehose also carries <code>#identity</code> events (when a handle or <strong><abbr title="decentralized identifier">DID</abbr> document</strong> changes), and <code>#account</code> events (when an account's status changes).
+		</p>
+		<p>
+			Other <code>com.atproto.sync.*</code> end-points let anyone fetch data directly:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>End-Point</th>
+						<th>What It Does</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.sync.subscribeRepos</code></td>
+						<td>the firehose (a WebSocket)</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.getRepo</code></td>
+						<td>download a whole <strong>repository</strong> (<abbr title="Content Addressable Archive">CAR</abbr> file)</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.getRecord</code></td>
+						<td>get one record, with the proof that it is in the <strong>repository</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.getLatestCommit</code></td>
+						<td>get the current commit of a <strong>repository</strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.getRepoStatus</code></td>
+						<td>get an account's hosting status</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.listRepos</code></td>
+						<td>list the accounts this <strong><abbr title="Personal Data Server">PDS</abbr></strong> hosts</td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.getBlob</code></td>
+						<td>download a <strong><abbr title="Binary Large OBject">BLOB</abbr></strong></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.listBlobs</code></td>
+						<td>list an account's <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Job 6: Forwarding Requests (Service Proxying)</h1>
+		<p>
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> only has its own accounts' data.
+			So, when an app asks for something like a timeline, a thread, or a profile with follower counts, the <strong><abbr title="Personal Data Server">PDS</abbr></strong> forwards the request to another service — usually an <strong><a href="../appview/">AppView</a></strong>.
+			The <abbr title="HyperText Transfer Protocol">HTTP</abbr> <abbr title="Application Programming Interface">API</abbr> specification says:
+		</p>
+		<blockquote>
+			<p>
+				The PDS acts as a generic proxy between clients and other atproto services. Clients can use an HTTP header to specify which service in the network they want the request forwarded to (eg, a specific AppView or Labeler service). The PDS will do some safety checks, then forward the request on with an inter-service authentication token (JWT, described above) issued and signed by the user's identity.
+			</p>
+		</blockquote>
+		<p>
+			The header is <code>atproto-proxy</code>.
+			For example:
+		</p>
+		<figure>
+			<pre>
+atproto-proxy: did:web:api.bsky.app#bsky_appview
+			</pre>
+		</figure>
+		<p>
+			For proxying to happen, the request must be from a logged-in user with an active account on the <strong><abbr title="Personal Data Server">PDS</abbr></strong>, it must be for an <code>/xrpc/</code> end-point, and the target service must have a resolvable <strong><abbr title="decentralized identifier">DID</abbr></strong> with a matching service entry.
+		</p>
+		<p>
+			(Bluesky's <strong><abbr title="Personal Data Server">PDS</abbr></strong> software has a default AppView — <code>PDS_BSKY_APP_VIEW_DID</code> defaults to <code>did:web:api.bsky.app</code>.
+			For more on proxying, see: <a href="../appview/"><abbr title="AT-Protocol">ATProto</abbr> AppView</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Account Status</h1>
+		<p>
+			On a <strong><abbr title="Personal Data Server">PDS</abbr></strong>, each account is either <em>active</em> or not.
+			If it is not active, the specification lists a more specific status:
+		</p>
+		<dl>
+			<dt><code>deleted</code></dt>
+			<dd><p>the user or host deleted the account; its content should be removed from the network.</p></dd>
+
+			<dt><code>deactivated</code></dt>
+			<dd><p>the user paused the account, for a while. (Also the starting state of an account that is migrating to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)</p></dd>
+
+			<dt><code>takendown</code></dt>
+			<dd><p>the host (or another service) took the account down.</p></dd>
+
+			<dt><code>suspended</code></dt>
+			<dd><p>the host (or another service) paused the account, for a while.</p></dd>
+		</dl>
+		<p>
+			(There are also <code>desynchronized</code> and <code>throttled</code>, where the account may still be active.)
+		</p>
+		<p>
+			Anyone can ask for an account's status with <code>com.atproto.sync.getRepoStatus</code>.
+			For example, for <code>@bsky.app</code>:
+		</p>
+		<figure>
+			<pre>
+{
+  "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+  "active": true,
+  "rev": "3n2ufixmefx2v"
+}
+			</pre>
+		</figure>
+		<p>
+			Other services follow the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The specification says: “If there is doubt about about an account’s general status in the network, the account’s current active PDS host can be queried using the <code>com.atproto.sync.getRepoStatus</code> endpoint.”
+		</p>
+	</section>
+	<section>
+		<h1>Moving to Another PDS</h1>
+		<p>
+			A user is not stuck with their <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			The overview says:
+		</p>
+		<blockquote>
+			<p>
+				We assume that a Personal Data Server may fail at any time, either by going offline in its entirety, or by ceasing service for specific users. The goal of the AT Protocol is to ensure that a user can migrate their account to a new PDS without the server's involvement.
+			</p>
+		</blockquote>
+		<p>
+			An account has moved once its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> points to the new <strong><abbr title="Personal Data Server">PDS</abbr></strong>, it is active there, and it has a working <strong>repository</strong> there.
+			When both the old and new <strong><abbr title="Personal Data Server">PDS</abbr></strong> are working, the accounts specification summarizes the steps as:
+		</p>
+		<ol>
+			<li>create an account on the new <strong><abbr title="Personal Data Server">PDS</abbr></strong> (which may start out not active),</li>
+			<li>copy the data from the old <strong><abbr title="Personal Data Server">PDS</abbr></strong> to the new one,</li>
+			<li>update the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> to point to the new <strong><abbr title="Personal Data Server">PDS</abbr></strong>, with a new signing key,</li>
+			<li>make the old account inactive, and the new one active, and</li>
+			<li>publish a new commit from the new <strong><abbr title="Personal Data Server">PDS</abbr></strong>, signed with the new key.</li>
+		</ol>
+		<p>
+			This is why backups matter.
+			If a <strong><abbr title="Personal Data Server">PDS</abbr></strong> disappears without notice, a user with a backup (and control of their <strong><abbr title="decentralized identifier">DID</abbr></strong>) can upload it to a new <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			(See: <a href="../../how-to/backup-pds/">How-To Backup an <abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a>.)
+		</p>
+	</section>
+	<section>
+		<h1>A PDS and Spaces</h1>
+		<p>
+			There is a proposal to add <em>permissioned</em> (non-public) data to <strong><abbr title="AT-Protocol">ATProto</abbr></strong> — <strong><a href="../../space/">spaces</a></strong>.
+			Under that proposal, a <strong><abbr title="Personal Data Server">PDS</abbr></strong> usually plays 2 more roles:
+		</p>
+		<ul>
+			<li>a <strong><a href="../repo-host/">repo host</a></strong> — storing and serving its accounts' records in <strong>spaces</strong>, and</li>
+			<li>a <strong><a href="../space-host/">space host</a></strong> — answering for the <strong>spaces</strong> its accounts are the authority of.</li>
+		</ul>
+		<p>
+			(This is a proposal, and not yet part of the specification.)
+		</p>
+	</section>
+	<section>
+		<h1>Running Your Own PDS</h1>
+		<p>
+			Anyone can run a <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			Bluesky publishes its <strong><abbr title="Personal Data Server">PDS</abbr></strong> software, with instructions, at <a href="https://github.com/bluesky-social/pds">github.com/bluesky-social/pds</a>.
+			(The code itself is in <a href="https://github.com/bluesky-social/atproto/tree/main/packages/pds">TypeScript</a>.)
+		</p>
+		<p>
+			A few things from its instructions worth knowing:
+		</p>
+		<ul>
+			<li>
+				A <strong><abbr title="Personal Data Server">PDS</abbr></strong> has a health-check end-point — <code>/xrpc/_health</code>.
+				For example, <code>blacksky.app</code> answers <code>{"version":"1.14.19","gatekeeper_version":"1.0.2-blacksky"}</code>.
+			</li>
+			<li>
+				WebSockets must work, or the network will not see the <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s changes.
+				(The firehose is a WebSocket.)
+			</li>
+			<li>
+				Once running, it “will automatically begin broadcasting events to Relay servers.”
+				So, to change a <strong><abbr title="Personal Data Server">PDS</abbr></strong>'s hostname, migrate the accounts one by one — do not just wipe and reinstall.
+			</li>
+		</ul>
+		<p>
+			Some of its settings (environment variables) show how a <strong><abbr title="Personal Data Server">PDS</abbr></strong> connects to the rest of the network:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Setting</th>
+						<th>Default</th>
+						<th>What It Is</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>PDS_DID_PLC_URL</code></td>
+						<td><code>https://plc.directory</code></td>
+						<td>where <code>did:plc</code> <strong><abbr title="decentralized identifier">DID</abbr>s</strong> are created and resolved</td>
+					</tr>
+					<tr>
+						<td><code>PDS_BSKY_APP_VIEW_URL</code></td>
+						<td><code>https://api.bsky.app</code></td>
+						<td>the default <strong>AppView</strong></td>
+					</tr>
+					<tr>
+						<td><code>PDS_BSKY_APP_VIEW_DID</code></td>
+						<td><code>did:web:api.bsky.app</code></td>
+						<td>the default <strong>AppView</strong>'s <strong><abbr title="decentralized identifier">DID</abbr></strong></td>
+					</tr>
+					<tr>
+						<td><code>PDS_REPORT_SERVICE_URL</code></td>
+						<td><code>https://mod.bsky.app</code></td>
+						<td>where moderation reports go</td>
+					</tr>
+					<tr>
+						<td><code>PDS_CRAWLERS</code></td>
+						<td><code>https://bsky.network</code></td>
+						<td>which <strong>relays</strong> to ask to subscribe (<code>requestCrawl</code>)</td>
+					</tr>
+					<tr>
+						<td><code>PDS_BLOB_UPLOAD_LIMIT</code></td>
+						<td><code>314572800</code> (300 <abbr title="megabytes">MB</abbr>)</td>
+						<td>the largest <strong><abbr title="Binary Large OBject">BLOB</abbr></strong> it accepts</td>
+					</tr>
+					<tr>
+						<td><code>PDS_INVITE_REQUIRED</code></td>
+						<td><code>true</code></td>
+						<td>whether new accounts need an invite code</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			(Bluesky's is not the only <strong><abbr title="Personal Data Server">PDS</abbr></strong> software.
+			Any server that implements the right <strong>XRPC</strong> API end-points, and follows the specifications, is a <strong><abbr title="Personal Data Server">PDS</abbr></strong>.)
+		</p>
+	</section>
+	<section>
+		<h1>XRPC API End-Points</h1>
+		<p>
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> implements end-points from these <code>com.atproto.*</code> groups:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Group</th>
+						<th>What It Covers</th>
+						<th>Examples</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.atproto.server.*</code></td>
+						<td>the server, accounts, and logins</td>
+						<td><code>describeServer</code>, <code>createAccount</code>, <code>createSession</code>, <code>getSession</code>, <code>getServiceAuth</code>, <code>deactivateAccount</code>, <code>deleteAccount</code></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.repo.*</code></td>
+						<td>reading and writing records and <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong></td>
+						<td><code>getRecord</code>, <code>listRecords</code>, <code>describeRepo</code>, <code>createRecord</code>, <code>putRecord</code>, <code>deleteRecord</code>, <code>applyWrites</code>, <code>uploadBlob</code>, <code>importRepo</code></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.*</code></td>
+						<td>sharing data with the network</td>
+						<td><code>subscribeRepos</code>, <code>getRepo</code>, <code>getRecord</code>, <code>getLatestCommit</code>, <code>getRepoStatus</code>, <code>listRepos</code>, <code>getBlob</code>, <code>listBlobs</code></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.identity.*</code></td>
+						<td>handles and <strong><abbr title="decentralized identifier">DID</abbr>s</strong></td>
+						<td><code>resolveHandle</code>, <code>updateHandle</code>, <code>getRecommendedDidCredentials</code>, <code>signPlcOperation</code>, <code>submitPlcOperation</code></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.admin.*</code></td>
+						<td>the <strong><abbr title="Personal Data Server">PDS</abbr></strong> operator's administration</td>
+						<td><code>getAccountInfo</code>, <code>updateSubjectStatus</code>, <code>deleteAccount</code></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			Plus any end-point it <em>proxies</em> to another service (such as <code>app.bsky.*</code> to an <strong>AppView</strong>).
+		</p>
+		<p>
+			Note that a few <code>com.atproto.sync.*</code> end-points are for <strong>relays</strong>, not <strong><abbr title="Personal Data Server">PDS</abbr>es</strong> — for example, <code>requestCrawl</code>, <code>listHosts</code>, and <code>getHostStatus</code>.
+			A <strong><abbr title="Personal Data Server">PDS</abbr></strong> <em>calls</em> <code>requestCrawl</code>; it does not implement it.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a Go program that finds an account's <strong><abbr title="Personal Data Server">PDS</abbr></strong>, and then reads from it — with no login.
+			It calls <code>describeServer</code>, <code>getRepoStatus</code>, <code>describeRepo</code>, and <code>listRecords</code>.
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+)
+
+const did = "did:plc:z72i7hdynmk6r22z27h6tvur" // bsky.app
+
+func getJSON(u string, value any) error {
+	resp, err := http.Get(u)
+	if nil != err {
+		return err
+	}
+	defer resp.Body.Close()
+	if http.StatusOK != resp.StatusCode {
+		return fmt.Errorf("%s: %s", u, resp.Status)
+	}
+	return json.NewDecoder(resp.Body).Decode(value)
+}
+
+// Find the account's PDS, from its DID document.
+// (This only handles did:plc. See: How-To Resolve a DID to a PDS.)
+func findPDS(did string) (string, error) {
+	var doc struct {
+		ID      string `json:"id"`
+		Service []struct {
+			ID              string `json:"id"`
+			Type            string `json:"type"`
+			ServiceEndpoint string `json:"serviceEndpoint"`
+		} `json:"service"`
+	}
+	if err := getJSON("https://plc.directory/"+did, &amp;doc); nil != err {
+		return "", err
+	}
+	if did != doc.ID {
+		return "", fmt.Errorf("DID document is for %q, not %q", doc.ID, did)
+	}
+	for _, service := range doc.Service {
+		if strings.HasSuffix(service.ID, "#atproto_pds") &amp;&amp; "AtprotoPersonalDataServer" == service.Type {
+			return service.ServiceEndpoint, nil
+		}
+	}
+	return "", fmt.Errorf("no PDS in DID document")
+}
+
+func main() {
+	pds, err := findPDS(did)
+	if nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("PDS:", pds)
+
+	var server struct {
+		DID                  string   `json:"did"`
+		AvailableUserDomains []string `json:"availableUserDomains"`
+	}
+	if err := getJSON(pds+"/xrpc/com.atproto.server.describeServer", &amp;server); nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("server DID:", server.DID)
+	fmt.Println("user domains:", server.AvailableUserDomains)
+
+	var status struct {
+		Active bool   `json:"active"`
+		Rev    string `json:"rev"`
+	}
+	if err := getJSON(pds+"/xrpc/com.atproto.sync.getRepoStatus?did="+url.QueryEscape(did), &amp;status); nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("active:", status.Active, "rev:", status.Rev)
+
+	var repo struct {
+		Handle      string   `json:"handle"`
+		Collections []string `json:"collections"`
+	}
+	if err := getJSON(pds+"/xrpc/com.atproto.repo.describeRepo?repo="+url.QueryEscape(did), &amp;repo); nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("handle:", repo.Handle)
+	fmt.Println("collections:", len(repo.Collections))
+
+	var records struct {
+		Records []struct {
+			URI   string `json:"uri"`
+			Value struct {
+				Text      string `json:"text"`
+				CreatedAt string `json:"createdAt"`
+			} `json:"value"`
+		} `json:"records"`
+	}
+	query := url.Values{"repo": {did}, "collection": {"app.bsky.feed.post"}, "limit": {"3"}}
+	if err := getJSON(pds+"/xrpc/com.atproto.repo.listRecords?"+query.Encode(), &amp;records); nil != err {
+		log.Fatal(err)
+	}
+	for _, record := range records.Records {
+		fmt.Println()
+		fmt.Println(record.URI)
+		fmt.Println(record.Value.CreatedAt)
+		fmt.Println(record.Value.Text)
+	}
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Running it, on November 21st, 2026, printed (post text shortened):
+		</p>
+		<figure>
+			<pre>
+PDS: https://puffball.us-east.host.bsky.network
+server DID: did:web:puffball.us-east.host.bsky.network
+user domains: [.bsky.social]
+active: true rev: 3n2ufixmefx2v
+handle: bsky.app
+collections: 15
+
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2ozugncr22j
+2026-11-19T21:39:02.924Z
+View counts—now available in beta—appear on posts from Nov 18 and later with 100+ views. …
+
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2opitysuc2j
+2026-11-19T18:33:36.814Z
+We’ve also made it easier to share posts from Bluesky. …
+
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2opitxdyc2j
+2026-11-19T18:33:36.813Z
+v1.138 is live! …
+			</pre>
+		</figure>
+		<p>
+			Notice that it reads the posts straight from <code>@bsky.app</code>'s <strong><abbr title="Personal Data Server">PDS</abbr></strong> — the source of truth.
+			It gets the records exactly as written — with no like counts, reply counts, or author profiles.
+			Those come from an <strong><a href="../appview/">AppView</a></strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>Personal Data Server</strong> (<strong><abbr title="Personal Data Server">PDS</abbr></strong>):
+		</p>
+		<ol>
+			<li>hosts accounts — usually many of them,</li>
+			<li>is found through the <code>#atproto_pds</code> service in an account's <strong><abbr title="decentralized identifier">DID</abbr> document</strong>,</li>
+			<li>is the source of truth for its accounts' <strong>repositories</strong>, which it signs with each account's signing key,</li>
+			<li>stores its accounts' <strong><abbr title="Binary Large OBject">BLOB</abbr>s</strong>,</li>
+			<li>logs users in (with OAuth — itself, or through an entryway),</li>
+			<li>publishes every change on its firehose, for <strong>relays</strong>,</li>
+			<li>forwards requests for everything else to other services, such as <strong>AppViews</strong>, and</li>
+			<li>can be left — an account can move to another <strong><abbr title="Personal Data Server">PDS</abbr></strong>.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/guides/overview">AT Protocol: Overview</a> — “Achieving Scale”, “Algorithmic choice”, and “Account portability”</li>
+			<li><a href="https://atproto.com/guides/glossary">AT Protocol: Glossary</a> — “PDS (Personal Data Server)”</li>
+			<li><a href="https://atproto.com/specs/account">AT Protocol: Accounts</a> — account hosting, hosting status, migration, and security considerations</li>
+			<li><a href="https://atproto.com/specs/repository">AT Protocol: Repository</a></li>
+			<li><a href="https://atproto.com/specs/sync">AT Protocol: Sync</a></li>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a> — “Service Proxying”</li>
+			<li><a href="https://atproto.com/specs/oauth">AT Protocol: OAuth</a></li>
+			<li><a href="https://github.com/bluesky-social/pds">bluesky-social/pds</a> — README (FAQ, verifying, environment variables, migrating)</li>
+			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto"><code>com.atproto.*</code> lexicons</a> (as of commit <code>906202d</code>) — including <code>com.atproto.repo.uploadBlob</code></li>
+			<li>Live requests, November 21st, 2026: <code>plc.directory</code>; <code>puffball.us-east.host.bsky.network</code> (<code>_health</code>, <code>describeServer</code>, <code>getRepoStatus</code>, <code>describeRepo</code>, <code>listRepos</code>, <code>oauth-protected-resource</code>); <code>blacksky.app</code> (<code>_health</code>, <code>describeServer</code>, <code>oauth-protected-resource</code>); <code>bsky.social</code> (<code>describeServer</code>)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
