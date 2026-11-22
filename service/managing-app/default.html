@@ -565,10 +565,16 @@ did:web:access.example.com#managing_app
 				<strong>the service <code>id</code> and <code>type</code> in the <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.</strong>
 				This article uses <code>#managing_app</code> and <code>ManagingApp</code>.
 			</li>
-			<li>
-				<strong>whether the <code>aud</code> includes the <code>#serviceId</code>.</strong>
-				The example code below accepts both.
-			</li>
+		</ul>
+		<p>
+			(What goes in the service token's <code>aud</code> field <em>is</em> covered — by the general <a href="../../xrpc/">XRPC</a> specification, not the proposal.
+			It says “New software should always include the service fragment name when generating JWTs” — so, <code>did:web:access.example.com#managing_app</code> — and that services may accept a bare <strong><abbr title="decentralized identifier">DID</abbr></strong> for backwards compatibility.
+			The example code below accepts both.)
+		</p>
+		<p>
+			Also still not specified:
+		</p>
+		<ul>
 			<li>
 				<strong>caching, timeouts, and what happens when the managing app is down.</strong>
 				The proposal does not say whether a <strong>space host</strong> may remember an answer, or what to do if the <strong>managing app</strong> does not respond.

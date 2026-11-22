@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto XRPC: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="api" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="http" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+<meta name="category" content="xrpc" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page">XRPC</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> XRPC</h1>
+			<p>
+				how <abbr title="AT-Protocol">ATProto</abbr> clients and servers talk to each other over <abbr title="HyperText Transfer Protocol">HTTP</abbr>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		<strong>XRPC</strong> is how the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) does <abbr title="HyperText Transfer Protocol">HTTP</abbr> <abbr title="Application Programming Interface">API</abbr>s — between apps and servers, and between servers.
+		The specification says:
+	</p>
+	<blockquote>
+		<p>
+			HTTP APIs for client-server and server-server requests in atproto use a set of common conventions called "Lexicon RPC", or XRPC for short. Endpoint path names include an NSID indicating the Lexicon specifying the request and response schemas, usually with JSON content type.
+		</p>
+	</blockquote>
+	<p>
+		<mark><strong>XRPC</strong> is not a separate protocol, and it does not need a special library.
+		It is plain <abbr title="HyperText Transfer Protocol">HTTP</abbr> and <abbr title="JavaScript Object Notation">JSON</abbr>, with a few conventions — the path is <code>/xrpc/</code> plus an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, reading is <code>GET</code>, doing is <code>POST</code>, and errors are <abbr title="JavaScript Object Notation">JSON</abbr>.
+		Any <abbr title="HyperText Transfer Protocol">HTTP</abbr> client (even <code>curl</code>) can use it.</mark>
+	</p>
+	<p>
+		For example:
+	</p>
+	<figure>
+		<pre>
+$ curl 'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=bsky.app'
+{"did":"did:plc:z72i7hdynmk6r22z27h6tvur"}
+		</pre>
+	</figure>
+	<section>
+		<h1>The URL</h1>
+		<p>
+			Every <strong>XRPC</strong> end-point lives at <code>/xrpc/</code>, followed by an <strong><a href="../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong>:
+		</p>
+		<figure>
+			<pre>
+https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=bsky.app
+└────────────┬────────────┘└─┬──┘└───────────────┬────────────────┘ └──────┬──────┘
+             │               │                   │                         │
+             │               │                   │                 query parameters
+             │               │        NSID (which end-point)
+             │         always /xrpc/
+        the server
+			</pre>
+		</figure>
+		<p>
+			The <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> is the <code>id</code> of the end-point's <strong><a href="../lexicon/">lexicon</a></strong> — the schema that says what the end-point takes and returns.
+			And, the specification says “Paths must always be top-level, not below a prefix.”
+			(So, <code>https://example.com/api/xrpc/…</code> is not allowed.)
+		</p>
+	</section>
+	<section>
+		<h1>Queries and Procedures</h1>
+		<p>
+			A <strong>lexicon</strong> describes an end-point as one of 2 types:
+		</p>
+		<dl>
+			<dt>query — <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code></dt>
+			<dd>
+				<p>
+					reads something.
+					Inputs go in the <abbr title="Uniform Resource Locator">URL</abbr>'s query string.
+					Queries “are cacheable and should not mutate resource state.”
+				</p>
+			</dd>
+
+			<dt>procedure — <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>POST</code></dt>
+			<dd>
+				<p>
+					does something.
+					Inputs usually go in a <abbr title="JavaScript Object Notation">JSON</abbr> request body.
+					Procedures “are not cacheable and may mutate state.”
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Using the wrong method is an error.
+			For example, a <code>GET</code> to <code>com.atproto.repo.createRecord</code> (a procedure) on a Bluesky <strong><abbr title="Personal Data Server">PDS</abbr></strong> returned:
+		</p>
+		<figure>
+			<pre>
+HTTP 400
+{"error":"InvalidRequest","message":"Incorrect HTTP method (GET) expected POST"}
+			</pre>
+		</figure>
+		<section>
+			<h1>Query Parameters</h1>
+			<p>
+				A few rules for query parameters:
+			</p>
+			<ul>
+				<li>Only booleans, integers, strings, and arrays of those, are allowed.</li>
+				<li>An array is sent by repeating the parameter — for example, <code>?uris=…&amp;uris=…</code>.</li>
+				<li>Booleans are sent as <code>true</code> or <code>false</code>.</li>
+				<li>Strings are not quoted.</li>
+				<li>If the <strong>lexicon</strong> gives a default value, it should be sent anyway — so caching works consistently.</li>
+			</ul>
+		</section>
+		<section>
+			<h1>A Query</h1>
+			<p>
+				Here is the exchange for the <code>resolveHandle</code> example (simplified — headers trimmed):
+			</p>
+			<figure>
+				<pre>
+GET /xrpc/com.atproto.identity.resolveHandle?handle=bsky.app HTTP/1.1
+Host: public.api.bsky.app
+
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+
+{"did":"did:plc:z72i7hdynmk6r22z27h6tvur"}
+				</pre>
+			</figure>
+			<p>
+				(For what this end-point's <strong>lexicon</strong> looks like, see: <a href="../lexicon/"><abbr title="AT-Protocol">ATProto</abbr> Lexicon</a>.)
+			</p>
+		</section>
+		<section>
+			<h1>A Procedure</h1>
+			<p>
+				And, here is the shape of a procedure — creating a post with <code>com.atproto.repo.createRecord</code>, on the user's <strong><a href="../service/pds/"><abbr title="Personal Data Server">PDS</abbr></a></strong>:
+			</p>
+			<figure>
+				<pre>
+POST /xrpc/com.atproto.repo.createRecord HTTP/1.1
+Host: pds.example.com
+Authorization: …
+Content-Type: application/json
+
+{
+  "repo": "did:plc:…",
+  "collection": "app.bsky.feed.post",
+  "record": {
+    "$type": "app.bsky.feed.post",
+    "text": "Hello world!",
+    "createdAt": "2026-11-22T12:00:00.000Z"
+  }
+}
+				</pre>
+			</figure>
+			<p>
+				If it works, the response includes the new record's <code>uri</code> and <code>cid</code>.
+				(See: <a href="../record/"><abbr title="AT-Protocol">ATProto</abbr> Record</a>.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Errors</h1>
+		<p>
+			When something goes wrong, the response should be <abbr title="JavaScript Object Notation">JSON</abbr> with 2 fields:
+		</p>
+		<dl>
+			<dt><code>error</code></dt>
+			<dd><p>required — the name of the error, with no spaces (for example, <code>InvalidRequest</code>).</p></dd>
+
+			<dt><code>message</code></dt>
+			<dd><p>optional — a description, for humans.</p></dd>
+		</dl>
+		<p>
+			For example, asking a Bluesky <strong><abbr title="Personal Data Server">PDS</abbr></strong> to create a record without logging in returned:
+		</p>
+		<figure>
+			<pre>
+HTTP 401
+{"error":"AuthMissing","message":"Authentication Required"}
+			</pre>
+		</figure>
+		<p>
+			And, passing <code>not a handle</code> to <code>resolveHandle</code> returned:
+		</p>
+		<figure>
+			<pre>
+HTTP 400
+{"error":"InvalidRequest","message":"Invalid com.atproto.identity.resolveHandle params: Invalid handle (got \"not a handle\")"}
+			</pre>
+		</figure>
+		<p>
+			An end-point's <strong>lexicon</strong> can list its own error names, so clients can handle them specifically.
+			For example, the <code>resolveHandle</code> lexicon lists <code>HandleNotFound</code>.
+			(But, in practice, servers do not always use them — <code>public.api.bsky.app</code> answered a handle that does not exist with <code>{"error":"InvalidRequest","message":"Unable to resolve handle"}</code>.
+			So, handle the generic errors too.)
+		</p>
+		<p>
+			The specification lists what the <abbr title="HyperText Transfer Protocol">HTTP</abbr> status codes mean:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Status</th>
+						<th>Meaning</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>200</code></td><td>it worked</td></tr>
+					<tr><td><code>400</code></td><td>the request was invalid, and was not processed</td></tr>
+					<tr><td><code>401</code></td><td>you need to be logged in</td></tr>
+					<tr><td><code>403</code></td><td>you are logged in, but not allowed</td></tr>
+					<tr><td><code>404</code></td><td>not found — or, the server does not support <abbr title="AT-Protocol">ATProto</abbr>, or this end-point</td></tr>
+					<tr><td><code>413</code></td><td>the request body was too large</td></tr>
+					<tr><td><code>429</code></td><td>too many requests — back off (maybe with a <code>Retry-After</code> header)</td></tr>
+					<tr><td><code>500</code></td><td>a server error — you may retry after a delay</td></tr>
+					<tr><td><code>501</code></td><td>the end-point is known, but not implemented — do not retry</td></tr>
+					<tr><td><code>502</code>, <code>503</code>, <code>504</code></td><td>the service is down — you may retry after a delay</td></tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			Two practical notes:
+		</p>
+		<ul>
+			<li>
+				Be ready for errors that are <em>not</em> <abbr title="JavaScript Object Notation">JSON</abbr>.
+				The specification says “realistically, many services will return generic load-balancer or reverse-proxy HTML error pages. Clients should be robust to non-JSON error responses.”
+			</li>
+			<li>
+				Use timeouts, limited retries, and randomized exponential backoff — the specification encourages all 3.
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Authentication</h1>
+		<p>
+			Some end-points need no login (most reads of public data).
+			Others do (writing, and anything about the logged-in user).
+			The specification admits “there is not yet a consistent way to enumerate which endpoints do or do not.”
+		</p>
+		<p>
+			There are 4 kinds of authentication:
+		</p>
+		<dl>
+			<dt>OAuth</dt>
+			<dd>
+				<p>
+					the main way, for apps acting for a user.
+					The specification says: “The primary client/server authentication and authorization scheme for XRPC is OAuth”.
+				</p>
+			</dd>
+
+			<dt>session tokens (legacy)</dt>
+			<dd>
+				<p>
+					log in with <code>com.atproto.server.createSession</code> (a handle or email, and a password — ideally an <em>app password</em>), and get back an access token and a refresh token.
+					Send the access token as <code>Authorization: Bearer …</code>.
+					It expires quickly; get a new one with <code>com.atproto.server.refreshSession</code>.
+					Clients should treat the tokens as opaque.
+				</p>
+			</dd>
+
+			<dt>admin (temporary)</dt>
+			<dd>
+				<p>
+					for a server's operator — <abbr title="HyperText Transfer Protocol">HTTP</abbr> Basic auth, with the user name <code>admin</code>.
+					Used for <code>com.atproto.admin.*</code>, and a few others.
+				</p>
+			</dd>
+
+			<dt>inter-service tokens</dt>
+			<dd>
+				<p>
+					for one service calling another <em>on a user's behalf</em> — a short-lived <abbr title="JSON Web Token">JWT</abbr>, signed with the user's signing key.
+				</p>
+			</dd>
+		</dl>
+		<section>
+			<h1>Inter-Service Tokens</h1>
+			<p>
+				An inter-service <abbr title="JSON Web Token">JWT</abbr> has these fields:
+			</p>
+			<figure>
+				<table>
+					<thead>
+						<tr>
+							<th>Field</th>
+							<th>Where</th>
+							<th>Meaning</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr><td><code>alg</code></td><td>header</td><td><code>ES256K</code> (for k256 keys) or <code>ES256</code> (for p256 keys)</td></tr>
+						<tr><td><code>typ</code></td><td>header</td><td>currently <code>JWT</code></td></tr>
+						<tr><td><code>kid</code></td><td>header</td><td>optional — which key in the <strong><abbr title="decentralized identifier">DID</abbr> document</strong> signed it (default <code>#atproto</code>)</td></tr>
+						<tr><td><code>iss</code></td><td>body</td><td>the user's <strong><abbr title="decentralized identifier">DID</abbr></strong></td></tr>
+						<tr><td><code>aud</code></td><td>body</td><td>the receiving service's <strong><abbr title="decentralized identifier">DID</abbr></strong> <em>and</em> service fragment — for example, <code>did:web:labeler.example.com#atproto_labeler</code></td></tr>
+						<tr><td><code>exp</code></td><td>body</td><td>when it expires (“60 seconds is a good token lifetime”)</td></tr>
+						<tr><td><code>iat</code></td><td>body</td><td>when it was made</td></tr>
+						<tr><td><code>lxm</code></td><td>body</td><td>the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> of the end-point it may be used for</td></tr>
+						<tr><td><code>jti</code></td><td>body</td><td>a random nonce, to prevent replays</td></tr>
+					</tbody>
+				</table>
+			</figure>
+			<p>
+				The receiving service checks the signature against the key in the user's <strong><abbr title="decentralized identifier">DID</abbr> document</strong>, and checks that <code>aud</code> is itself.
+			</p>
+			<p>
+				About <code>aud</code>: the specification says “New software should always include the service fragment name when generating JWTs.”
+				A bare <strong><abbr title="decentralized identifier">DID</abbr></strong> (with no fragment) is legacy and deprecated — though services “may be configured to accept bare DIDs in <code>aud</code> for backwards compatibility”.
+				(The specification notes that, until Spring 2026, Bluesky's <strong><abbr title="Personal Data Server">PDS</abbr></strong> sent bare <strong><abbr title="decentralized identifier">DID</abbr>s</strong> when proxying, and that this is being updated.)
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Service Proxying</h1>
+		<p>
+			An app usually sends all its requests to the user's <strong><abbr title="Personal Data Server">PDS</abbr></strong> — even ones the <strong><abbr title="Personal Data Server">PDS</abbr></strong> cannot answer itself (like a timeline).
+			The <strong><abbr title="Personal Data Server">PDS</abbr></strong> forwards those to another service, with an inter-service token.
+			The app says where, with the <code>atproto-proxy</code> header:
+		</p>
+		<figure>
+			<pre>
+atproto-proxy: did:web:api.bsky.app#bsky_appview
+			</pre>
+		</figure>
+		<p>
+			The value is a service's <strong><abbr title="decentralized identifier">DID</abbr></strong>, a <code>#</code>, and the <code>id</code> of a service entry in its <strong><abbr title="decentralized identifier">DID</abbr> document</strong>.
+			Proxying only works for a logged-in user with an active account on the <strong><abbr title="Personal Data Server">PDS</abbr></strong>.
+			(For more, see: <a href="../service/pds/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Personal Data Server">PDS</abbr></a> and <a href="../service/appview/"><abbr title="AT-Protocol">ATProto</abbr> AppView</a>.)
+		</p>
+		<p>
+			(This may be why a Bluesky <strong><abbr title="Personal Data Server">PDS</abbr></strong> answered a made-up end-point, <code>com.example.fooBar</code>, with <code>401 AuthMissing</code> rather than <code>404</code> — it would try to proxy an end-point it does not implement itself, and proxying requires a login.
+			That is my reading of the behavior, not something the specification says.)
+		</p>
+	</section>
+	<section>
+		<h1>Headers</h1>
+		<p>
+			The request headers an <strong>XRPC</strong> client might send:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Header</th>
+						<th>Purpose</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>Content-Type</code></td><td>the type of the request body, if there is one</td></tr>
+					<tr><td><code>Authorization</code></td><td>authentication (see above)</td></tr>
+					<tr><td><code>atproto-proxy</code></td><td>which service the <strong><abbr title="Personal Data Server">PDS</abbr></strong> should forward the request to</td></tr>
+					<tr><td><code>atproto-accept-labelers</code></td><td>which <strong><a href="../service/labeler/">labelers</a></strong>' labels to include in the response</td></tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Pagination</h1>
+		<p>
+			End-points that return lists usually take a <code>cursor</code> parameter, and return a <code>cursor</code> field.
+			The rules:
+		</p>
+		<ol>
+			<li>leave out <code>cursor</code> on the first request,</li>
+			<li>if the response has a <code>cursor</code>, send it back (with all the other parameters unchanged) to get the next page, and</li>
+			<li>stop when a response has no <code>cursor</code>.</li>
+		</ol>
+		<p>
+			Treat the cursor as opaque.
+			(For example, <code>com.atproto.repo.listRecords</code> on a Bluesky <strong><abbr title="Personal Data Server">PDS</abbr></strong> happens to return the last record key as its cursor — but do not rely on that.)
+		</p>
+	</section>
+	<section>
+		<h1>Blobs</h1>
+		<p>
+			Files (images, videos, etc) are a special case, since they are not <abbr title="JavaScript Object Notation">JSON</abbr>.
+			An app uploads one with <code>com.atproto.repo.uploadBlob</code> — the request body is the raw file, with its <code>Content-Type</code> — and gets back a blob reference to put in a record.
+			Blobs are downloaded with <code>com.atproto.sync.getBlob</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Event Streams</h1>
+		<p>
+			<strong>Lexicons</strong> can also describe <em>subscriptions</em> — event streams, over WebSockets.
+			They also live under <code>/xrpc/</code> — for example, the firehose is <code>wss://…/xrpc/com.atproto.sync.subscribeRepos</code>.
+			(See: <a href="../service/relay/"><abbr title="AT-Protocol">ATProto</abbr> Relay</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a small <strong>XRPC</strong> client in Go — using only the standard library.
+			It makes a query, handles an <strong>XRPC</strong> error, and pages through results with a cursor.
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+)
+
+// An XRPC error response: {"error": "...", "message": "..."}
+type XRPCError struct {
+	Status  int
+	Name    string `json:"error"`
+	Message string `json:"message"`
+}
+
+func (e *XRPCError) Error() string {
+	return fmt.Sprintf("%d %s: %s", e.Status, e.Name, e.Message)
+}
+
+// Query calls an XRPC query (an HTTP GET) and decodes the JSON response into out.
+func Query(host string, nsid string, params url.Values, out any) error {
+	u := host + "/xrpc/" + nsid
+	if 0 &lt; len(params) {
+		u += "?" + params.Encode()
+	}
+
+	resp, err := http.Get(u)
+	if nil != err {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if nil != err {
+		return err
+	}
+
+	if http.StatusOK != resp.StatusCode {
+		xrpcErr := &amp;XRPCError{Status: resp.StatusCode}
+		// Servers should send a JSON error, but might not (eg, an HTML page from a load-balancer).
+		if nil != json.Unmarshal(body, xrpcErr) || "" == xrpcErr.Name {
+			xrpcErr.Name = http.StatusText(resp.StatusCode)
+		}
+		return xrpcErr
+	}
+
+	return json.Unmarshal(body, out)
+}
+
+func main() {
+	const pds = "https://puffball.us-east.host.bsky.network"
+	const did = "did:plc:z72i7hdynmk6r22z27h6tvur" // bsky.app
+
+	// A simple query.
+	var resolved struct {
+		DID string `json:"did"`
+	}
+	if err := Query("https://public.api.bsky.app", "com.atproto.identity.resolveHandle", url.Values{"handle": {"bsky.app"}}, &amp;resolved); nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("bsky.app →", resolved.DID)
+
+	// An error.
+	err := Query("https://public.api.bsky.app", "com.atproto.identity.resolveHandle", url.Values{"handle": {"not a handle"}}, &amp;resolved)
+	fmt.Println("error:", err)
+
+	// Pagination: keep passing back the cursor, until there is none (here, stopping after 3 pages).
+	cursor := ""
+	for page := 1; page &lt;= 3; page++ {
+		params := url.Values{"repo": {did}, "collection": {"app.bsky.feed.post"}, "limit": {"2"}}
+		if "" != cursor {
+			params.Set("cursor", cursor)
+		}
+
+		var list struct {
+			Cursor  string `json:"cursor"`
+			Records []struct {
+				URI string `json:"uri"`
+			} `json:"records"`
+		}
+		if err := Query(pds, "com.atproto.repo.listRecords", params, &amp;list); nil != err {
+			log.Fatal(err)
+		}
+		for _, record := range list.Records {
+			fmt.Printf("page %d: %s\n", page, record.URI[strings.LastIndex(record.URI, "/")+1:])
+		}
+		if "" == list.Cursor {
+			break
+		}
+		cursor = list.Cursor
+	}
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Running it, on November 22nd, 2026, printed:
+		</p>
+		<figure>
+			<pre>
+bsky.app → did:plc:z72i7hdynmk6r22z27h6tvur
+error: 400 InvalidRequest: Invalid com.atproto.identity.resolveHandle params: Invalid handle (got "not a handle")
+page 1: 3n2ozugncr22j
+page 1: 3n2opitysuc2j
+page 2: 3n2opitxdyc2j
+page 2: 3n2mkgfb4tk2d
+page 3: 3n2m24be4e223
+page 3: 3n27yge3hys24
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>It is just <code>net/http</code> and <code>encoding/json</code> — no <abbr title="AT-Protocol">ATProto</abbr> library is needed for <strong>XRPC</strong>.</li>
+			<li>On an error, it reads the <code>error</code> and <code>message</code> fields — and falls back to the <abbr title="HyperText Transfer Protocol">HTTP</abbr> status text, if the body is not <abbr title="JavaScript Object Notation">JSON</abbr>.</li>
+			<li>It keeps every other parameter the same between pages, and only changes <code>cursor</code>.</li>
+			<li>It only does queries. A procedure would be the same, but with <code>http.Post</code> and a <abbr title="JavaScript Object Notation">JSON</abbr> body (and, usually, an <code>Authorization</code> header).</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			<strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>XRPC</strong>:
+		</p>
+		<ol>
+			<li>is plain <abbr title="HyperText Transfer Protocol">HTTP</abbr> and <abbr title="JavaScript Object Notation">JSON</abbr>, with conventions,</li>
+			<li>puts every end-point at <code>/xrpc/</code> plus an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, described by a <strong>lexicon</strong>,</li>
+			<li>uses <code>GET</code> for queries (reading) and <code>POST</code> for procedures (doing),</li>
+			<li>returns errors as <code>{"error": …, "message": …}</code>,</li>
+			<li>authenticates with OAuth (or legacy session tokens), and between services with signed <abbr title="JSON Web Token">JWT</abbr>s,</li>
+			<li>lets the <strong><abbr title="Personal Data Server">PDS</abbr></strong> forward requests to other services, with <code>atproto-proxy</code>, and</li>
+			<li>pages through lists with an opaque <code>cursor</code>.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a> (fetched November 22nd, 2026)</li>
+			<li><a href="https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto">bluesky-social/atproto lexicons</a> (as of commit <code>906202d</code>) — <code>com.atproto.identity.resolveHandle</code>, <code>com.atproto.repo.createRecord</code></li>
+			<li>Live requests, November 22nd, 2026: <code>public.api.bsky.app</code> (<code>resolveHandle</code> — success, invalid handle, unknown handle); <code>puffball.us-east.host.bsky.network</code> (<code>createRecord</code> with no login, <code>GET</code> on <code>createRecord</code>, <code>com.example.fooBar</code>, <code>listRecords</code> with a cursor)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
