@@ -202,11 +202,45 @@
 					Generic syntax is not the same as a valid <code>did:plc</code>.
 				</p>
 			</li>
+			<li>
+				<p><strong>A <code>did:plc</code>'s <abbr title="decentralized identifier">DID</abbr> document never changes.</strong></p>
+				<p>
+					The <strong><abbr title="decentralized identifier">DID</abbr></strong> never changes — but its <strong><abbr title="decentralized identifier">DID</abbr> document</strong> can.
+					Each change is a signed <em>operation</em>, and the handle (<code>alsoKnownAs</code>), the <strong><abbr title="Personal Data Server">PDS</abbr></strong> (the <code>#atproto_pds</code> service), the signing key (<code>#atproto</code>), and the rotation keys can all be changed.
+				</p>
+				<p>
+					For example, my <strong><abbr title="decentralized identifier">DID</abbr></strong>'s audit log (<a target="_blank" href="https://plc.directory/did:plc:scewmn2pl3oz36mxme2b6czz/log/audit">plc.directory/did:plc:scewmn2pl3oz36mxme2b6czz/log/audit</a>) has 4 operations:
+				</p>
+				<figure>
+					<table>
+						<thead>
+							<tr>
+								<th>Date</th>
+								<th>Handle</th>
+								<th><abbr title="Personal Data Server">PDS</abbr></th>
+								<th>What Changed</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr><td>2023-04-18</td><td><code>reiver.bsky.social</code></td><td><code>bsky.social</code></td><td>(created)</td></tr>
+							<tr><td>2023-11-13</td><td><code>reiver.bsky.social</code></td><td><code>lionsmane.us-east.host.bsky.network</code></td><td><abbr title="Personal Data Server">PDS</abbr>, signing key</td></tr>
+							<tr><td>2026-10-23</td><td><code>reiver.myatproto.social</code></td><td><code>blacksky.app</code></td><td>handle, <abbr title="Personal Data Server">PDS</abbr>, signing key</td></tr>
+							<tr><td>2026-11-06</td><td><code>reiver.blacksky.team</code></td><td><code>blacksky.app</code></td><td>handle</td></tr>
+						</tbody>
+					</table>
+				</figure>
+				<p>
+					And, the <code>did:plc</code> specification has 2 more surprises.
+					A “tombstone” operation “clears all of the data fields and permanently deactivates the DID”.
+					And, there is a 72-hour window during which a higher-authority rotation key can “"rewrite" history”.
+					So, do not cache a <strong><abbr title="decentralized identifier">DID</abbr> document</strong> forever — re-resolve it from time to time, and watch the firehose for <code>#identity</code> events.
+				</p>
+			</li>
 		</ol>
 	</section>
 	<section>
 		<h1>Personal Data Servers</h1>
-		<ol start="17">
+		<ol start="18">
 			<li>
 				<p><strong>“Personal” Data Server means one server per person.</strong></p>
 				<p>
@@ -255,7 +289,7 @@
 	</section>
 	<section>
 		<h1>Records and Repositories</h1>
-		<ol start="23">
+		<ol start="24">
 			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
@@ -327,7 +361,7 @@
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="33">
+		<ol start="34">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -380,7 +414,7 @@
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="40">
+		<ol start="41">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -419,7 +453,7 @@
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="45">
+		<ol start="46">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -473,7 +507,7 @@
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="51">
+		<ol start="52">
 			<li>
 				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
 				<p>
