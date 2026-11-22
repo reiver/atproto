@@ -402,6 +402,39 @@ equipment.rpg.item
 				</p>
 			</li>
 			<li>
+				<p><strong>Everything a user does on <abbr title="AT-Protocol">ATProto</abbr> is public.</strong></p>
+				<p>
+					Everything in a user's <em>repository</em> is public — posts, likes, follows, and even blocks (see the next item).
+					But, not everything a user does is stored as a record in their repository.
+					For example, in Bluesky:
+				</p>
+				<ul>
+					<li><strong>preferences</strong> — <code>app.bsky.actor.putPreferences</code> says it will “Set the private preferences attached to the account.”</li>
+					<li><strong>mutes</strong> — <code>app.bsky.graph.muteActor</code> says “Mutes are private in Bluesky.”</li>
+					<li><strong>direct messages</strong> — <code>chat.bsky.convo.sendMessage</code> sends them to a separate chat service (<code>did:web:api.bsky.chat</code>), not into anyone's repository.</li>
+					<li><strong>account details</strong> — email address, password, and app passwords stay on the user's <strong><a href="../service/pds/"><abbr title="Personal Data Server">PDS</abbr></a></strong>.</li>
+				</ul>
+				<p>
+					Note that this data is private from the <em>public</em> — not encrypted.
+					The <strong><abbr title="Personal Data Server">PDS</abbr></strong> (or chat service) that holds it can read it.
+					And, these are features of particular apps and services (<code>app.bsky.*</code>, <code>chat.bsky.*</code>), not a privacy guarantee of the protocol itself.
+				</p>
+				<p>
+					(The <strong><a href="../space/">spaces</a></strong> proposal would add something new: <em>records</em> that only some people may read — see the Spaces section, below.)
+				</p>
+			</li>
+			<li>
+				<p><strong>Blocks are private, like mutes.</strong></p>
+				<p>
+					In Bluesky, a mute is private — but a block is a public record.
+					A block is an <code>app.bsky.graph.block</code> record in the <em>blocker's</em> repository, and its lexicon says so plainly: “Record declaring a 'block' relationship against another account. NOTE: blocks are public in Bluesky; see blog posts for details.”
+				</p>
+				<p>
+					So, anyone can list an account's blocks — for example, with <code>com.atproto.repo.listRecords</code>, or from the firehose — and see who blocked whom.
+					If you build features on blocks, treat them as public information.
+				</p>
+			</li>
+			<li>
 				<p><strong>A record has an author field.</strong></p>
 				<p>
 					The author is the <strong>repository</strong> the record is in.
@@ -551,7 +584,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>NSIDs and Lexicons</h1>
-		<ol start="44">
+		<ol start="46">
 			<li>
 				<p><strong>An <abbr title="Namespaced Identifier">NSID</abbr> is an address you can fetch.</strong></p>
 				<p>
@@ -604,7 +637,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>XRPC</h1>
-		<ol start="51">
+		<ol start="53">
 			<li>
 				<p><strong>You need a special library to talk <abbr title="AT-Protocol">ATProto</abbr>.</strong></p>
 				<p>
@@ -643,7 +676,7 @@ equipment.rpg.item
 	</section>
 	<section>
 		<h1>The Network</h1>
-		<ol start="56">
+		<ol start="58">
 			<li>
 				<p><strong>There is one firehose.</strong></p>
 				<p>
@@ -742,7 +775,7 @@ equipment.rpg.item
 		<p>
 			(Falsehoods that come from comparing <strong><abbr title="AT-Protocol">ATProto</abbr></strong> with <a href="/activitypub/">ActivityPub</a>, the <a href="/fediverse/">Fediverse</a>, and Mastodon.)
 		</p>
-		<ol start="66">
+		<ol start="68">
 			<li>
 				<p><strong>Unlike ActivityPub (and the Fediverse, and Mastodon), <abbr title="AT-Protocol">ATProto</abbr> does not use <abbr title="JavaScript Object Notation for Linked Data">JSON-LD</abbr>.</strong></p>
 				<p>
@@ -854,13 +887,7 @@ equipment.rpg.item
 		<p>
 			(These are about the <strong><a href="../space/">spaces</a></strong> proposal, which is not yet part of the specification.)
 		</p>
-		<ol start="74">
-			<li>
-				<p><strong>All <abbr title="AT-Protocol">ATProto</abbr> data is public.</strong></p>
-				<p>
-					Today, yes — but the spaces proposal adds data that only some people may read.
-				</p>
-			</li>
+		<ol start="76">
 			<li>
 				<p><strong>Space data is encrypted.</strong></p>
 				<p>
