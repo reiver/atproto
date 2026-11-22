@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Lexicon: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="lexicon" />
+<meta name="category" content="lexicons" />
+<meta name="category" content="open social web" />
+<meta name="category" content="schema" />
+<meta name="category" content="social web" />
+<meta name="category" content="validation" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page">Lexicon</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Lexicon</h1>
+			<p>
+				the schema language for records, <abbr title="Application Programming Interface">API</abbr> end-points, and event streams
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		<strong>Lexicon</strong> is how the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) describes the <em>shape</em> of its data and <abbr title="Application Programming Interface">API</abbr>s.
+		The specification says:
+	</p>
+	<blockquote>
+		<p>
+			Lexicon is a schema definition language used to describe atproto records, HTTP endpoints (XRPC), and event stream messages. It builds on top of the atproto Data Model.
+		</p>
+		<p>
+			The schema language is similar to JSON Schema and OpenAPI, but includes some atproto-specific features and semantics.
+		</p>
+	</blockquote>
+	<p>
+		Each schema is called a <strong>lexicon</strong>, and is named by a <strong><a href="../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong> — for example, <code>app.bsky.feed.post</code> (what a Bluesky post looks like), or <code>com.atproto.identity.resolveHandle</code> (an <abbr title="Application Programming Interface">API</abbr> end-point).
+	</p>
+	<p>
+		<mark>A <strong>lexicon</strong> is a <em>description</em>, not code — it does not run.
+		It says what fields a record has (and which are required), or what an end-point takes and returns.
+		Software uses it to check data, and to generate code.</mark>
+	</p>
+	<p>
+		And, <strong>lexicons</strong> are themselves published as <strong><abbr title="AT-Protocol">ATProto</abbr></strong> data — as records in a <strong>repository</strong> (see “Publishing and Finding Lexicons”, below).
+	</p>
+	<section>
+		<h1>What a Lexicon Can Describe</h1>
+		<p>
+			A <strong>lexicon</strong> can describe one main thing — one of these 5 <em>primary</em> types:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Type</th>
+						<th>Describes</th>
+						<th>Example</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>record</code></td>
+						<td>a kind of record that can be stored in a <strong>repository</strong></td>
+						<td><code>app.bsky.feed.post</code></td>
+					</tr>
+					<tr>
+						<td><code>query</code></td>
+						<td>an <strong>XRPC</strong> end-point that reads (<abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code>)</td>
+						<td><code>com.atproto.identity.resolveHandle</code></td>
+					</tr>
+					<tr>
+						<td><code>procedure</code></td>
+						<td>an <strong>XRPC</strong> end-point that does something (<abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>POST</code>)</td>
+						<td><code>com.atproto.repo.createRecord</code></td>
+					</tr>
+					<tr>
+						<td><code>subscription</code></td>
+						<td>an event stream (WebSocket)</td>
+						<td><code>com.atproto.sync.subscribeRepos</code></td>
+					</tr>
+					<tr>
+						<td><code>permission-set</code></td>
+						<td>a bundle of OAuth permissions</td>
+						<td></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			It can also hold other, supporting definitions — objects, strings with restrictions, etc — that other definitions refer to.
+		</p>
+	</section>
+	<section>
+		<h1>A Lexicon File</h1>
+		<p>
+			A <strong>lexicon</strong> is a <abbr title="JavaScript Object Notation">JSON</abbr> document with 4 fields:
+		</p>
+		<dl>
+			<dt><code>lexicon</code></dt>
+			<dd><p>required — the version of the Lexicon language. Currently always <code>1</code>.</p></dd>
+
+			<dt><code>id</code></dt>
+			<dd><p>required — the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> of this <strong>lexicon</strong>.</p></dd>
+
+			<dt><code>description</code></dt>
+			<dd><p>optional — a short overview.</p></dd>
+
+			<dt><code>defs</code></dt>
+			<dd><p>required — the definitions, by name. The one named <code>main</code> is the primary definition.</p></dd>
+		</dl>
+		<p>
+			Here is a complete, real one — <code>com.atproto.identity.resolveHandle</code>, which describes an end-point:
+		</p>
+		<figure>
+			<pre>
+{
+  "lexicon": 1,
+  "id": "com.atproto.identity.resolveHandle",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Resolves an atproto handle (hostname) to a DID. Does not necessarily bi-directionally verify against the the DID document.",
+      "parameters": {
+        "type": "params",
+        "required": ["handle"],
+        "properties": {
+          "handle": {
+            "type": "string",
+            "format": "handle",
+            "description": "The handle to resolve."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did"],
+          "properties": {
+            "did": { "type": "string", "format": "did" }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "HandleNotFound",
+          "description": "The resolution process confirmed that the handle does not resolve to any DID."
+        }
+      ]
+    }
+  }
+}
+			</pre>
+		</figure>
+		<p>
+			Reading it: this is a <code>query</code> (so, an <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code> to <code>/xrpc/com.atproto.identity.resolveHandle</code>).
+			It takes one required query parameter, <code>handle</code>, which must be a handle.
+			It returns <abbr title="JavaScript Object Notation">JSON</abbr> with one required field, <code>did</code>, which must be a <strong><abbr title="decentralized identifier">DID</abbr></strong>.
+			And, it might fail with a <code>HandleNotFound</code> error.
+			(See: <a href="../how-to/resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a>.)
+		</p>
+		<section>
+			<h1>Referring to Definitions</h1>
+			<p>
+				A definition other than <code>main</code> is referred to with a <code>#</code> fragment — for example, <code>com.atproto.label.defs#selfLabels</code>.
+				Inside the same file, just the fragment works — for example, <code>#replyRef</code>.
+				The <code>main</code> definition is referred to by the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> alone.
+			</p>
+			<p>
+				By convention, definitions used by several <strong>lexicons</strong> go in a separate <code>*.defs</code> <strong>lexicon</strong> — for example, <code>com.atproto.label.defs</code> or <code>app.bsky.feed.defs</code>.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>A Record Lexicon</h1>
+		<p>
+			Here is (part of) the real <strong>lexicon</strong> for a Bluesky post — <code>app.bsky.feed.post</code> — trimmed to a few fields:
+		</p>
+		<figure>
+			<pre>
+{
+  "id": "app.bsky.feed.post",
+  "defs": {
+    "main": {
+      "key": "tid",
+      "type": "record",
+      "record": {
+        "type": "object",
+        "required": [
+          "text",
+          "createdAt"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 3000,
+            "description": "The primary post content. May be an empty string, if there are embeds.",
+            "maxGraphemes": 300
+          },
+          "embed": {
+            "refs": [
+              "app.bsky.embed.images",
+              "app.bsky.embed.video",
+              "app.bsky.embed.gallery",
+              "app.bsky.embed.external",
+              "app.bsky.embed.record",
+              "app.bsky.embed.recordWithMedia"
+            ],
+            "type": "union"
+          },
+          "langs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "language"
+            },
+            "maxLength": 3,
+            "description": "Indicates human language of post primary text content."
+          },
+          "reply": {
+            "ref": "#replyRef",
+            "type": "ref"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared timestamp when this post was originally created."
+          },
+          …
+        }
+      },
+      "description": "Record containing a Bluesky post."
+    },
+    …
+  },
+  …
+}
+			</pre>
+		</figure>
+		<p>
+			Reading it:
+		</p>
+		<ul>
+			<li><code>"type": "record"</code> — this describes a kind of record.</li>
+			<li><code>"key": "tid"</code> — each post's record key is a <abbr title="Timestamp Identifier">TID</abbr> (a timestamp identifier).</li>
+			<li><code>required</code> — every post must have <code>text</code> and <code>createdAt</code>.</li>
+			<li><code>text</code> — a string, at most 300 graphemes (roughly, 300 visible characters), and at most 3000 bytes.</li>
+			<li><code>createdAt</code> — a string that must be a <code>datetime</code>.</li>
+			<li><code>langs</code> — up to 3 language codes.</li>
+			<li><code>reply</code> — a <code>ref</code> to another definition in the same file (<code>#replyRef</code>).</li>
+			<li><code>embed</code> — a <code>union</code>: it can be any one of those 6 kinds of embed.</li>
+		</ul>
+		<p>
+			(This copy was fetched from the network — it is the record <code>at://did:plc:4v4y5r3lwsbtmsxhile2ljac/com.atproto.lexicon.schema/app.bsky.feed.post</code>.
+			See “Publishing and Finding Lexicons”, below.)
+		</p>
+		<p>
+			And, here is a post that matches it:
+		</p>
+		<figure>
+			<pre>
+{
+  "$type": "app.bsky.feed.post",
+  "text": "Hello world!",
+  "createdAt": "2026-11-22T12:00:00.000Z"
+}
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>Field Types</h1>
+		<p>
+			Fields are described with these types:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Type</th>
+						<th>Kind</th>
+						<th>Notes</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>boolean</code></td>
+						<td>concrete</td>
+						<td><code>true</code> or <code>false</code></td>
+					</tr>
+					<tr>
+						<td><code>integer</code></td>
+						<td>concrete</td>
+						<td>a signed integer; can have <code>minimum</code>, <code>maximum</code>, <code>enum</code> (there are no floating-point numbers)</td>
+					</tr>
+					<tr>
+						<td><code>string</code></td>
+						<td>concrete</td>
+						<td>Unicode text; can have a <code>format</code>, lengths in bytes or graphemes, <code>knownValues</code>, <code>enum</code></td>
+					</tr>
+					<tr>
+						<td><code>bytes</code></td>
+						<td>concrete</td>
+						<td>raw bytes (in <abbr title="JavaScript Object Notation">JSON</abbr>: <code>{"$bytes": "&lt;base64&gt;"}</code>)</td>
+					</tr>
+					<tr>
+						<td><code>cid-link</code></td>
+						<td>concrete</td>
+						<td>a link to other data, by <abbr title="Content IDentifier">CID</abbr></td>
+					</tr>
+					<tr>
+						<td><code>blob</code></td>
+						<td>concrete</td>
+						<td>a file (image, video, etc); can have <code>accept</code> (<abbr title="Multipurpose Internet Mail Extensions">MIME</abbr> types) and <code>maxSize</code></td>
+					</tr>
+					<tr>
+						<td><code>array</code></td>
+						<td>container</td>
+						<td>a list of <code>items</code>; can have <code>minLength</code>, <code>maxLength</code></td>
+					</tr>
+					<tr>
+						<td><code>object</code></td>
+						<td>container</td>
+						<td><code>properties</code>, plus <code>required</code> and <code>nullable</code> lists</td>
+					</tr>
+					<tr>
+						<td><code>params</code></td>
+						<td>sub-type</td>
+						<td>only for an end-point's query parameters</td>
+					</tr>
+					<tr>
+						<td><code>permission</code></td>
+						<td>sub-type</td>
+						<td>only inside a <code>permission-set</code></td>
+					</tr>
+					<tr>
+						<td><code>token</code></td>
+						<td>meta</td>
+						<td>a named value with a meaning, with no data of its own (like a “symbol”)</td>
+					</tr>
+					<tr>
+						<td><code>ref</code></td>
+						<td>meta</td>
+						<td>“use that other definition here”</td>
+					</tr>
+					<tr>
+						<td><code>union</code></td>
+						<td>meta</td>
+						<td>“one of these definitions”</td>
+					</tr>
+					<tr>
+						<td><code>unknown</code></td>
+						<td>meta</td>
+						<td>any object, not checked</td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			A few things worth knowing:
+		</p>
+		<ul>
+			<li>
+				<code>knownValues</code> is <em>not</em> a closed list — other values are allowed.
+				<code>enum</code> <em>is</em> a closed list.
+			</li>
+			<li>
+				String lengths come in 2 kinds: <code>minLength</code>/<code>maxLength</code> count <abbr title="Unicode Transformation Format 8-bit">UTF-8</abbr> <em>bytes</em>, and <code>minGraphemes</code>/<code>maxGraphemes</code> count grapheme clusters (roughly, visible characters — an emoji might be many bytes, but one grapheme).
+			</li>
+			<li>
+				Leaving a field out, setting it to <code>null</code>, and setting it to a “false-y” value (<code>false</code>, <code>0</code>, an empty array) all mean different things.
+				<code>null</code> is only allowed if the field is listed in <code>nullable</code>.
+			</li>
+			<li>
+				The specification says “Lexicon designers are strongly recommended to not use <code>unknown</code> fields in record objects for now.”
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>String Formats</h1>
+		<p>
+			A <code>string</code> can be limited to one of these formats:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th>Format</th>
+						<th>Meaning</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>at-identifier</code></td><td>a handle or a <strong><abbr title="decentralized identifier">DID</abbr></strong></td></tr>
+					<tr><td><code>at-uri</code></td><td>an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr></td></tr>
+					<tr><td><code>cid</code></td><td>a <abbr title="Content IDentifier">CID</abbr>, as a string</td></tr>
+					<tr><td><code>datetime</code></td><td>a timestamp — for example, <code>1985-04-12T23:20:50.123Z</code> (a timezone is required)</td></tr>
+					<tr><td><code>did</code></td><td>a <strong><abbr title="decentralized identifier">DID</abbr></strong></td></tr>
+					<tr><td><code>handle</code></td><td>a handle</td></tr>
+					<tr><td><code>nsid</code></td><td>an <strong><a href="../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong></td></tr>
+					<tr><td><code>tid</code></td><td>a timestamp identifier</td></tr>
+					<tr><td><code>record-key</code></td><td>a record key</td></tr>
+					<tr><td><code>uri</code></td><td>any <abbr title="Uniform Resource Identifier">URI</abbr> (at most 8 <abbr title="kilobytes">KB</abbr>)</td></tr>
+					<tr><td><code>language</code></td><td>a language code — for example, <code>ja</code> or <code>pt-BR</code></td></tr>
+				</tbody>
+			</table>
+		</figure>
+		<p>
+			For identifiers, validation should be loose.
+			The specification gives the example that “data with any kind of DID in a did format string field should pass Lexicon validation, with unsupported DID methods being raised separately as an application error.”
+		</p>
+	</section>
+	<section>
+		<h1>Refs and Unions</h1>
+		<p>
+			A <code>ref</code> means “the definition over there goes here” — it lets a definition be reused.
+			A <code>union</code> means “any <em>one</em> of these definitions goes here”.
+		</p>
+		<p>
+			Unions are <em>open</em> by default.
+			That means a later version of the <strong>lexicon</strong> might add more kinds — so software should not reject a kind it does not know about.
+			(A union with <code>"closed": true</code> can never change.)
+		</p>
+		<p>
+			Since a union could be one of several things, the data has to say which.
+			That is what <code>$type</code> is for.
+		</p>
+	</section>
+	<section>
+		<h1>When to Use $type</h1>
+		<p>
+			Data includes a <code>$type</code> field whenever its type might be ambiguous.
+			The rules are:
+		</p>
+		<ul>
+			<li><em>records</em> must always have <code>$type</code> — since records get passed around outside of <strong>repositories</strong>, and need to describe themselves,</li>
+			<li>each value in a <em>union</em> must have <code>$type</code> (except at the top level of event-stream messages), and</li>
+			<li><code>blob</code> values always have <code>"$type": "blob"</code>.</li>
+		</ul>
+		<p>
+			And, for a <code>main</code> definition, <code>$type</code> is just the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> — <code>app.bsky.feed.post</code>, never <code>app.bsky.feed.post#main</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Validation</h1>
+		<p>
+			When an app creates or updates a record, the <strong><a href="../service/pds/"><abbr title="Personal Data Server">PDS</abbr></a></strong> can check it against its <strong>lexicon</strong>.
+			The specification describes 3 options:
+		</p>
+		<dl>
+			<dt>validation required</dt>
+			<dd><p>the record must be checked. If the <strong><abbr title="Personal Data Server">PDS</abbr></strong> cannot find the <strong>lexicon</strong>, the write fails.</p></dd>
+
+			<dt>no validation</dt>
+			<dd><p>the record is not checked against any <strong>lexicon</strong> (though it must still be valid <strong><abbr title="AT-Protocol">ATProto</abbr></strong> data).</p></dd>
+
+			<dt>optimistic validation (the default)</dt>
+			<dd><p>if the <strong><abbr title="Personal Data Server">PDS</abbr></strong> knows the <strong>lexicon</strong>, it checks; if not, the write is allowed. (Also called “fail-open”.)</p></dd>
+		</dl>
+		<p>
+			This is why apps can store new kinds of records in a user's <strong>repository</strong>, without the <strong><abbr title="Personal Data Server">PDS</abbr></strong> knowing anything about them.
+		</p>
+		<p>
+			Two more rules, for any software that reads the data:
+		</p>
+		<ul>
+			<li>Data that fails validation should be treated as entirely invalid — not repaired, and not partly used.</li>
+			<li>But, <em>extra</em> fields (ones the <strong>lexicon</strong> does not mention) should be ignored — at worst, a warning. Otherwise, older software would break every time a <strong>lexicon</strong> added a field.</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Changing a Lexicon</h1>
+		<p>
+			A <strong>lexicon</strong> can change over time — but only in compatible ways.
+			The principle is that “all old data must still be valid under the updated Lexicon, and new data must be valid under the old Lexicon.”
+			So:
+		</p>
+		<ul>
+			<li>new fields must be optional,</li>
+			<li>types cannot change,</li>
+			<li>fields cannot be renamed,</li>
+			<li>required fields cannot be removed (mark them deprecated instead),</li>
+			<li>closed unions cannot change, and</li>
+			<li>size and length limits cannot be added, removed, or changed.</li>
+		</ul>
+		<p>
+			“If larger breaking changes are necessary, a new Lexicon name must be used.”
+			(You can see this in <code>app.bsky.feed.post</code> above — the old <code>entities</code> field is still there, marked “DEPRECATED: replaced by app.bsky.richtext.facet.”)
+		</p>
+		<p>
+			When does a <strong>lexicon</strong> become fixed?
+			The specification says that, at a minimum, once a third party has adopted it.
+			It suggests marking experimental ones in the name — for example, <code>com.corp.experimental.newRecord</code>.
+		</p>
+	</section>
+	<section>
+		<h1>Who Controls a Lexicon</h1>
+		<p>
+			A <strong>lexicon</strong> is controlled by whoever controls its <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>'s domain.
+			The specification says:
+		</p>
+		<blockquote>
+			<p>
+				The authority for a Lexicon is determined by the NSID, and rooted in DNS control of the domain authority. That authority has ultimate control over the Lexicon definition, and responsibility for maintenance and distribution of Lexicon schema definitions.
+			</p>
+		</blockquote>
+		<p>
+			So, to make your own record types and end-points, use <strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> under a domain you control.
+			(See: <a href="../nsid/"><abbr title="AT-Protocol">ATProto</abbr> <abbr title="Namespaced Identifier">NSID</abbr></a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Publishing and Finding Lexicons</h1>
+		<p>
+			<strong>Lexicons</strong> are published as records, of type <code>com.atproto.lexicon.schema</code>, in an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>repository</strong>.
+			The record key is the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+			A <abbr title="Domain Name System">DNS</abbr> <code>TXT</code> record says which <strong>repository</strong>.
+		</p>
+		<p>
+			For example, for <code>app.bsky.feed.post</code>:
+		</p>
+		<figure>
+			<pre>
+app.bsky.feed.post
+        │
+        │  drop the name, reverse the rest, add "_lexicon."
+        ▼
+_lexicon.feed.bsky.app   (DNS TXT)
+        │
+        │  "did=did:plc:4v4y5r3lwsbtmsxhile2ljac"
+        ▼
+at://did:plc:4v4y5r3lwsbtmsxhile2ljac/com.atproto.lexicon.schema/app.bsky.feed.post
+			</pre>
+		</figure>
+		<p>
+			Note that this is <em>not</em> hierarchical — if <code>_lexicon.feed.bsky.app</code> does not exist, a resolver does <em>not</em> try <code>_lexicon.bsky.app</code>.
+			(For the details, see: <a href="../how-to/resolve-lexicon/">How-To Resolve a Lexicon</a>.)
+		</p>
+		<p>
+			Since <strong>lexicons</strong> are records, changes to them go out on the firehose like any other record.
+			(But, changes to the <abbr title="Domain Name System">DNS</abbr> records do not — so resolvers should not cache them for long.)
+		</p>
+	</section>
+	<section>
+		<h1>Lexicons and Spaces</h1>
+		<p>
+			The proposal for <strong><a href="../space/">spaces</a></strong> (permissioned data) adds a new kind of <strong>lexicon</strong> definition — a <em>space type declaration</em>, with <code>"type": "space"</code> — which lists the record collections to expect in a kind of <strong>space</strong>.
+			That is a proposal, and not part of version 1 of the Lexicon specification.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a Go program that checks records against the <code>app.bsky.feed.post</code> <strong>lexicon</strong>.
+			It uses the <a href="https://github.com/bluesky-social/indigo">indigo</a> library's <code>lexicon</code> package, with a <em>resolving catalog</em> — which fetches <strong>lexicons</strong> from the network (as described above), as they are needed.
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/bluesky-social/indigo/atproto/lexicon"
+)
+
+// Some records to check, written as JSON — the way an app would send them.
+var records = []struct {
+	label string
+	json  string
+}{
+	{"a normal post", `{"$type": "app.bsky.feed.post", "text": "Hello world!", "createdAt": "2026-11-22T12:00:00.000Z"}`},
+	{"no createdAt", `{"$type": "app.bsky.feed.post", "text": "Hello world!"}`},
+	{"text too long", `{"$type": "app.bsky.feed.post", "text": "` + strings.Repeat("a", 301) + `", "createdAt": "2026-11-22T12:00:00.000Z"}`},
+	{"createdAt not a datetime", `{"$type": "app.bsky.feed.post", "text": "Hello world!", "createdAt": "yesterday"}`},
+	{"an extra field", `{"$type": "app.bsky.feed.post", "text": "Hello world!", "createdAt": "2026-11-22T12:00:00.000Z", "mood": "happy"}`},
+}
+
+func main() {
+	// A catalog that resolves lexicons from the network, as they are needed.
+	catalog := lexicon.NewResolvingCatalog()
+
+	for _, r := range records {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(r.json), &amp;record); nil != err {
+			fmt.Printf("%-26s bad JSON: %s\n", r.label, err)
+			continue
+		}
+
+		err := lexicon.ValidateRecord(catalog, record, "app.bsky.feed.post", 0)
+		if nil != err {
+			fmt.Printf("%-26s invalid: %s\n", r.label, err)
+			continue
+		}
+		fmt.Printf("%-26s valid\n", r.label)
+	}
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Running it, on November 22nd, 2026, printed:
+		</p>
+		<figure>
+			<pre>
+a normal post              valid
+no createdAt               invalid: required field missing: createdAt
+text too long              invalid: string length (graphemes) outside specified range: 301
+createdAt not a datetime   invalid: Datetime syntax didn't validate via regex
+an extra field             valid
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>The missing <code>createdAt</code>, the 301-character <code>text</code> (the limit is 300 graphemes), and the non-<code>datetime</code> <code>createdAt</code> were all caught.</li>
+			<li>The extra <code>mood</code> field was <em>allowed</em> — because extra fields should be ignored (see “Validation”, above).</li>
+			<li>The program never had a copy of the <strong>lexicon</strong> — it resolved <code>app.bsky.feed.post</code> through <abbr title="Domain Name System">DNS</abbr> and the network.</li>
+			<li>The last argument to <code>ValidateRecord</code> is a set of flags; <code>0</code> means the default (strict) rules.</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>lexicon</strong>:
+		</p>
+		<ol>
+			<li>is a <abbr title="JavaScript Object Notation">JSON</abbr> schema, named by an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>,</li>
+			<li>describes a record type, an <strong>XRPC</strong> end-point (query or procedure), an event stream, or a permission set,</li>
+			<li>describes fields with types like <code>string</code>, <code>integer</code>, <code>object</code>, <code>ref</code>, and <code>union</code>,</li>
+			<li>is used to validate data — with extra fields ignored,</li>
+			<li>can only change in compatible ways,</li>
+			<li>is controlled by whoever controls its <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>'s domain, and</li>
+			<li>is published as a <code>com.atproto.lexicon.schema</code> record, found through a <code>_lexicon</code> <abbr title="Domain Name System">DNS</abbr> record.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/lexicon">AT Protocol: Lexicon</a> (fetched November 22nd, 2026)</li>
+			<li><a href="https://atproto.com/guides/lexicon-style-guide">Lexicon Style Guide</a></li>
+			<li><a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/identity/resolveHandle.json"><code>com.atproto.identity.resolveHandle</code> lexicon</a> (as of commit <code>906202d</code>)</li>
+			<li><code>app.bsky.feed.post</code> lexicon — the record <code>at://did:plc:4v4y5r3lwsbtmsxhile2ljac/com.atproto.lexicon.schema/app.bsky.feed.post</code> (fetched November 22nd, 2026); <abbr title="Domain Name System">DNS</abbr> <code>TXT</code> <code>_lexicon.feed.bsky.app</code> → <code>did=did:plc:4v4y5r3lwsbtmsxhile2ljac</code></li>
+			<li><a href="https://github.com/bluesky-social/indigo">indigo</a> — <code>atproto/lexicon</code> (<code>NewResolvingCatalog</code>, <code>ValidateRecord</code>)</li>
+			<li><a href="https://github.com/bluesky-social/proposals/blob/main/0016-permissioned-data/README.md">Bluesky Proposal 0016: Atproto Spaces</a> — “Space type declarations”</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
