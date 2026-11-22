@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto Namespaced Identifier (NSID): A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="identifier" />
+<meta name="category" content="lexicon" />
+<meta name="category" content="namespaced identifier" />
+<meta name="category" content="nsid" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page"><abbr title="Namespaced Identifier">NSID</abbr></a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> Namespaced Identifier (<abbr title="Namespaced Identifier">NSID</abbr>)</h1>
+			<p>
+				the names of record types, <abbr title="Application Programming Interface">API</abbr> end-points, and schemas
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		A <strong>Namespaced Identifier</strong> (<strong><abbr title="Namespaced Identifier">NSID</abbr></strong>) is the kind of name the <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) uses for <strong>lexicons</strong> — the schemas for record types, <strong>XRPC</strong> <abbr title="Application Programming Interface">API</abbr> end-points, and more.
+		For example:
+	</p>
+	<figure>
+		<pre>
+app.bsky.feed.post
+com.atproto.sync.getRecord
+community.lexicon.location
+site.standard.document
+actor.rpg.sprite
+		</pre>
+	</figure>
+	<p>
+		The specification says:
+	</p>
+	<blockquote>
+		<p>
+			The basic structure and semantics of an NSID are a fully-qualified hostname in reverse domain-name order, followed by an additional name segment. The hostname part is the <em>domain authority</em>, and the final segment is the <em>name</em>.
+		</p>
+	</blockquote>
+	<p>
+		<mark>An <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> is a <em>name</em>, not an <em>address</em> — you cannot just fetch it.
+		It looks like a domain name written backwards, because it <em>is</em> one (plus a name on the end).
+		The domain says <em>who</em> controls the name.</mark>
+	</p>
+	<p>
+		(If you have used Java packages, or Android app IDs, the reverse-domain style will look familiar.)
+	</p>
+	<section>
+		<h1>The Two Parts</h1>
+		<p>
+			Every <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> has 2 parts — split at the <em>last</em> dot:
+		</p>
+		<figure>
+			<pre>
+com.atproto.sync.getRecord
+└──────┬───────┘ └───┬───┘
+       │             │
+domain authority   name
+			</pre>
+		</figure>
+		<dl>
+			<dt>domain authority</dt>
+			<dd>
+				<p>
+					a domain name, written in reverse order — <code>com.atproto.sync</code> means the domain <code>sync.atproto.com</code>.
+					Whoever controls that domain controls the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+				</p>
+			</dd>
+
+			<dt>name</dt>
+			<dd>
+				<p>
+					the name of the specific thing — written in camel-case, like <code>getRecord</code>, <code>post</code>, or <code>fooBar</code>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			Notice that the domain authority is the <em>whole</em> reversed domain — including any “sub-domains”.
+			The specification points out:
+		</p>
+		<blockquote>
+			<p>
+				It is common to use "subdomains" as part of the "domain authority" to organize related NSIDs. For example, the NSID <code>com.atproto.sync.getRecord</code> uses the <code>sync</code> segment. Note that this requires control of the full domain <code>sync.atproto.com</code>, in addition to the domain <code>atproto.com</code>.
+			</p>
+		</blockquote>
+		<p>
+			Here are a few more:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th><abbr title="Namespaced Identifier">NSID</abbr></th>
+						<th>Domain Authority</th>
+						<th>As a Domain</th>
+						<th>Name</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>app.bsky.feed.post</code></td>
+						<td><code>app.bsky.feed</code></td>
+						<td><code>feed.bsky.app</code></td>
+						<td><code>post</code></td>
+					</tr>
+					<tr>
+						<td><code>com.atproto.sync.getRecord</code></td>
+						<td><code>com.atproto.sync</code></td>
+						<td><code>sync.atproto.com</code></td>
+						<td><code>getRecord</code></td>
+					</tr>
+					<tr>
+						<td><code>community.lexicon.location</code></td>
+						<td><code>community.lexicon</code></td>
+						<td><code>lexicon.community</code></td>
+						<td><code>location</code></td>
+					</tr>
+					<tr>
+						<td><code>com.example.fooBar</code></td>
+						<td><code>com.example</code></td>
+						<td><code>example.com</code></td>
+						<td><code>fooBar</code></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+	</section>
+	<section>
+		<h1>Where NSIDs Are Used</h1>
+		<p>
+			<strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> show up all over <strong><abbr title="AT-Protocol">ATProto</abbr></strong>.
+			In each case, the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> is the name of a <strong>lexicon</strong> (a schema) that says what the thing is.
+		</p>
+		<section>
+			<h1>Record Types (Collections)</h1>
+			<p>
+				Every record has a type, and records in a <strong>repository</strong> are grouped into <em>collections</em> by type.
+				The collection's name is an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> — and it appears in every record's <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>:
+			</p>
+			<figure>
+				<pre>
+at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3n2opitxdyc2j
+                                      └───────┬────────┘
+                                              │
+                                    collection (an NSID)
+				</pre>
+			</figure>
+			<p>
+				It is also in the record itself, as <code>$type</code>:
+			</p>
+			<figure>
+				<pre>
+{
+  "$type": "app.bsky.feed.post",
+  "text": "Hello world!",
+  "createdAt": "2026-11-22T00:00:00.000Z"
+}
+				</pre>
+			</figure>
+		</section>
+		<section>
+			<h1>XRPC API End-Points</h1>
+			<p>
+				Every <strong>XRPC</strong> end-point is named by an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, which goes right after <code>/xrpc/</code> in the <abbr title="Uniform Resource Locator">URL</abbr>:
+			</p>
+			<figure>
+				<pre>
+https://puffball.us-east.host.bsky.network/xrpc/com.atproto.repo.describeRepo?repo=did:plc:z72i7hdynmk6r22z27h6tvur
+				</pre>
+			</figure>
+			<p>
+				<strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> also show up in the tokens services use to call each other — the <code>lxm</code> field of an inter-service <abbr title="JSON Web Token">JWT</abbr> holds the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> of the end-point it may be used for.
+				(See: <a href="../service/appview/"><abbr title="AT-Protocol">ATProto</abbr> AppView</a>.)
+			</p>
+		</section>
+		<section>
+			<h1>References Inside Lexicons</h1>
+			<p>
+				A <strong>lexicon</strong> can refer to a definition in another <strong>lexicon</strong>, with an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> plus a <code>#</code> fragment.
+				For example, <code>com.atproto.label.defs#selfLabels</code> is the <code>selfLabels</code> definition in the <code>com.atproto.label.defs</code> <strong>lexicon</strong>.
+				(The fragment is <em>not</em> part of the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.)
+			</p>
+		</section>
+		<section>
+			<h1>Spaces</h1>
+			<p>
+				In the proposal for <strong><a href="../space/">spaces</a></strong>, a <strong>space type</strong> is an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> (for example, <code>com.atmoboards.forum</code>), and so is each <strong>policy</strong> type (for example, <code>com.atproto.memberspace.policy</code>).
+			</p>
+		</section>
+		<section>
+			<h1>Permissions</h1>
+			<p>
+				OAuth permissions name record types and end-points by <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> too — for example, <code>repo:app.bsky.feed.post</code> — or <code>*</code> for all of them.
+				(Partial wildcards are not supported there.)
+				And, <em>permission sets</em> are themselves <strong>lexicons</strong>, named by <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Who Controls an NSID</h1>
+		<p>
+			Since the domain authority is a domain name, whoever controls the domain controls every <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> under it.
+			For example:
+		</p>
+		<ul>
+			<li><code>app.bsky.*</code> — Bluesky, who controls <code>bsky.app</code>.</li>
+			<li><code>com.atproto.*</code> — the protocol itself (<code>atproto.com</code>).</li>
+			<li><code>community.lexicon.*</code> — whoever controls <code>lexicon.community</code>.</li>
+		</ul>
+		<p>
+			So, to make your own record types or end-points, use a domain <em>you</em> control.
+			If you own <code>example.com</code>, your <strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> start with <code>com.example.</code>.
+		</p>
+		<p>
+			The specification also says “having multiple NSIDs that differ only by casing is not allowed. Namespace authorities are responsible for preventing duplication and confusion.”
+		</p>
+		<p>
+			Controlling the domain is also how a <strong>lexicon</strong> is <em>found</em>.
+			To resolve an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> to its <strong>lexicon</strong>, you drop the name, reverse the rest, and look up a <abbr title="Domain Name System">DNS</abbr> <code>TXT</code> record — for <code>app.bsky.feed.post</code>, that is <code>_lexicon.feed.bsky.app</code>.
+			(For the details, see: <a href="../how-to/resolve-lexicon/">How-To Resolve a Lexicon</a>.)
+		</p>
+	</section>
+	<section>
+		<h1>Syntax Rules</h1>
+		<p>
+			Here are the rules, from the specification:
+		</p>
+		<dl>
+			<dt>the whole <abbr title="Namespaced Identifier">NSID</abbr></dt>
+			<dd>
+				<ul>
+					<li>only <abbr title="American Standard Code for Information Interchange">ASCII</abbr> characters,</li>
+					<li>segments separated by periods (<code>.</code>),</li>
+					<li>at least 3 segments, and</li>
+					<li>at most 317 characters.</li>
+				</ul>
+			</dd>
+
+			<dt>the domain authority</dt>
+			<dd>
+				<ul>
+					<li>at least 2 segments,</li>
+					<li>at most 253 characters, including periods (but see the note below),</li>
+					<li>each segment is 1 to 63 characters,</li>
+					<li>only letters (<code>a-z</code>, <code>A-Z</code>), digits (<code>0-9</code>), and hyphens (<code>-</code>),</li>
+					<li>segments cannot start or end with a hyphen,</li>
+					<li>the first segment (the top-level domain) cannot start with a digit, and</li>
+					<li>not case-sensitive — it should be normalized to lowercase.</li>
+				</ul>
+			</dd>
+
+			<dt>the name</dt>
+			<dd>
+				<ul>
+					<li>1 to 63 characters,</li>
+					<li>only letters and digits — no hyphens,</li>
+					<li>cannot start with a digit, and</li>
+					<li><em>is</em> case-sensitive — it should <em>not</em> be normalized.</li>
+				</ul>
+			</dd>
+		</dl>
+		<p>
+			The specification also gives a reference regular expression:
+		</p>
+		<figure>
+			<pre>
+/^[a-zA-Z]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(\.[a-zA-Z]([a-zA-Z0-9]{0,62})?)$/
+			</pre>
+		</figure>
+		<p>
+			(The regular expression does not check the length limits.)
+		</p>
+		<p>
+			Some examples from the specification:
+		</p>
+		<figure>
+			<table>
+				<thead>
+					<tr>
+						<th><abbr title="Namespaced Identifier">NSID</abbr></th>
+						<th>Valid?</th>
+						<th>Why</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>com.example.fooBar</code></td>
+						<td>yes</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td><code>net.users.bob.ping</code></td>
+						<td>yes</td>
+						<td>more than 3 segments is fine</td>
+					</tr>
+					<tr>
+						<td><code>a-0.b-1.c</code></td>
+						<td>yes</td>
+						<td>hyphens and digits are allowed in the domain authority</td>
+					</tr>
+					<tr>
+						<td><code>a.b.c</code></td>
+						<td>yes</td>
+						<td>short is fine</td>
+					</tr>
+					<tr>
+						<td><code>com.example.fooBarV2</code></td>
+						<td>yes</td>
+						<td>digits are allowed in the name (just not first)</td>
+					</tr>
+					<tr>
+						<td><code>cn.8.lex.stuff</code></td>
+						<td>yes</td>
+						<td>only the <em>first</em> segment cannot start with a digit</td>
+					</tr>
+					<tr>
+						<td><code>com.example</code></td>
+						<td>no</td>
+						<td>only 2 segments</td>
+					</tr>
+					<tr>
+						<td><code>com.example.3</code></td>
+						<td>no</td>
+						<td>the name starts with a digit</td>
+					</tr>
+					<tr>
+						<td><code>com.exa💩ple.thing</code></td>
+						<td>no</td>
+						<td>not <abbr title="American Standard Code for Information Interchange">ASCII</abbr></td>
+					</tr>
+				</tbody>
+			</table>
+		</figure>
+		<section>
+			<h1>A Note About the 253 Character Limit</h1>
+			<p>
+				The specification says the domain authority can be at most 253 characters.
+				(That is the usual limit for a domain name — and 253 + 1 + 63 = 317, the overall limit.)
+			</p>
+			<p>
+				But, Bluesky's own interoperability test vectors list this as <em>valid</em>:
+			</p>
+			<figure>
+				<pre>
+com.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.middle.foo
+				</pre>
+			</figure>
+			<p>
+				Its domain authority is 283 characters (and the whole thing is 287).
+				And, Bluesky's TypeScript and Go implementations only check the 317 character total.
+				So, in practice, implementations accept a domain authority longer than 253 characters — as long as the whole <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> is at most 317.
+			</p>
+		</section>
+		<section>
+			<h1>Best Practices</h1>
+			<ul>
+				<li>
+					The specification “strongly” encourages domain authorities made of only letters — no digits or hyphens — since that “makes it significantly easier to generate client libraries in most programming languages.”
+				</li>
+				<li>
+					<strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> are case-sensitive for display, storage, and validation.
+					The specification says “Implementations should not force-lowercase NSIDs.”
+				</li>
+				<li>
+					For choosing names, see the <a href="https://atproto.com/guides/lexicon-style-guide">Lexicon Style Guide</a>.
+				</li>
+			</ul>
+		</section>
+	</section>
+	<section>
+		<h1>Globs</h1>
+		<p>
+			To refer to a <em>group</em> of <strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong>, a trailing <code>*</code> can be used — for example, <code>com.atproto.*</code>.
+			The specification says this “would refer to any NSIDs under the <code>atproto.com</code> domain authority, including nested sub-domains”.
+			A <code>*</code> by itself matches every <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+		</p>
+		<p>
+			The rules:
+		</p>
+		<ul>
+			<li>only one <code>*</code>,</li>
+			<li>it must be the last character, and</li>
+			<li>it must come right after a period (no partial matches — <code>com.example.foo*</code> is not allowed).</li>
+		</ul>
+		<p>
+			A glob is <em>not</em> itself an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+			(The test vectors list <code>com.example.foo.*</code> as an <em>invalid</em> <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.)
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a Go program that checks whether a string is a valid <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, splits it into its domain authority and name, and turns the domain authority back into a domain.
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+// An NSID, split into its 2 parts.
+type NSID struct {
+	Authority string // the domain authority, as written — e.g., "com.atproto.sync"
+	Name      string // the name segment — e.g., "getRecord"
+}
+
+// Domain returns the domain authority as a hostname — e.g., "sync.atproto.com".
+func (nsid NSID) Domain() string {
+	segments := strings.Split(strings.ToLower(nsid.Authority), ".")
+	for i, j := 0, len(segments)-1; i &lt; j; i, j = i+1, j-1 {
+		segments[i], segments[j] = segments[j], segments[i]
+	}
+	return strings.Join(segments, ".")
+}
+
+func isLetter(c byte) bool { return ('a' &lt;= c &amp;&amp; c &lt;= 'z') || ('A' &lt;= c &amp;&amp; c &lt;= 'Z') }
+func isDigit(c byte) bool  { return '0' &lt;= c &amp;&amp; c &lt;= '9' }
+
+func ParseNSID(s string) (NSID, error) {
+	if 317 &lt; len(s) {
+		return NSID{}, errors.New("too long")
+	}
+	segments := strings.Split(s, ".")
+	if len(segments) &lt; 3 {
+		return NSID{}, errors.New("must have at least 3 segments")
+	}
+
+	authority := segments[:len(segments)-1]
+	name := segments[len(segments)-1]
+
+	// the domain authority
+	// (The specification also says "at most 253 characters" — but the interop test vectors,
+	// and Bluesky's own implementations, only check the 317 character total.)
+	for i, segment := range authority {
+		if "" == segment || 63 &lt; len(segment) {
+			return NSID{}, fmt.Errorf("domain authority segment %q must be 1 to 63 characters", segment)
+		}
+		for j := 0; j &lt; len(segment); j++ {
+			c := segment[j]
+			if !isLetter(c) &amp;&amp; !isDigit(c) &amp;&amp; '-' != c {
+				return NSID{}, fmt.Errorf("domain authority segment %q has an invalid character", segment)
+			}
+		}
+		if '-' == segment[0] || '-' == segment[len(segment)-1] {
+			return NSID{}, fmt.Errorf("domain authority segment %q starts or ends with a hyphen", segment)
+		}
+		if 0 == i &amp;&amp; isDigit(segment[0]) {
+			return NSID{}, fmt.Errorf("top-level domain %q starts with a digit", segment)
+		}
+	}
+
+	// the name
+	if "" == name || 63 &lt; len(name) {
+		return NSID{}, errors.New("name must be 1 to 63 characters")
+	}
+	for j := 0; j &lt; len(name); j++ {
+		if !isLetter(name[j]) &amp;&amp; !isDigit(name[j]) {
+			return NSID{}, fmt.Errorf("name %q has an invalid character", name)
+		}
+	}
+	if isDigit(name[0]) {
+		return NSID{}, fmt.Errorf("name %q starts with a digit", name)
+	}
+
+	return NSID{Authority: strings.Join(authority, "."), Name: name}, nil
+}
+
+func main() {
+	for _, s := range []string{
+		"com.atproto.sync.getRecord",
+		"app.bsky.feed.post",
+		"com.example.fooBar",
+		"com.example",
+		"com.example.3",
+	} {
+		nsid, err := ParseNSID(s)
+		if nil != err {
+			fmt.Printf("%-28s invalid: %s\n", s, err)
+			continue
+		}
+		fmt.Printf("%-28s authority=%s domain=%s name=%s\n", s, nsid.Authority, nsid.Domain(), nsid.Name)
+	}
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Its output:
+		</p>
+		<figure>
+			<pre>
+com.atproto.sync.getRecord   authority=com.atproto.sync domain=sync.atproto.com name=getRecord
+app.bsky.feed.post           authority=app.bsky.feed domain=feed.bsky.app name=post
+com.example.fooBar           authority=com.example domain=example.com name=fooBar
+com.example                  invalid: must have at least 3 segments
+com.example.3                invalid: name "3" starts with a digit
+			</pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				It splits at the <em>last</em> period — so everything before that is the domain authority.
+			</li>
+			<li>
+				<code>Domain</code> lowercases the domain authority (it is not case-sensitive), but the name is left alone (it is case-sensitive).
+			</li>
+			<li>
+				It does not check the 253 character limit on the domain authority — to match the test vectors and Bluesky's implementations (see the note above).
+			</li>
+			<li>
+				It was tested against all 25 valid and 27 invalid <strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> in Bluesky's <a href="https://github.com/bluesky-social/atproto-interop-tests">interoperability test vectors</a>, and got them all right.
+				(The <a href="https://github.com/bluesky-social/indigo">indigo</a> library's <code>syntax.ParseNSID</code> accepted all the valid ones too.)
+			</li>
+		</ul>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong><abbr title="AT-Protocol">ATProto</abbr></strong> <strong>Namespaced Identifier</strong> (<strong><abbr title="Namespaced Identifier">NSID</abbr></strong>):
+		</p>
+		<ol>
+			<li>names a <strong>lexicon</strong> — a record type, an <strong>XRPC</strong> end-point, etc,</li>
+			<li>is a reversed domain name (the domain authority), plus a name — split at the last period,</li>
+			<li>is controlled by whoever controls that domain,</li>
+			<li>is used in <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>s, <code>$type</code>, <code>/xrpc/</code> <abbr title="Uniform Resource Locator">URL</abbr>s, and more, and</li>
+			<li>is at least 3 segments and at most 317 characters, with a case-insensitive domain authority and a case-sensitive name.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/nsid">AT Protocol: Namespaced Identifiers (NSIDs)</a></li>
+			<li><a href="https://atproto.com/specs/permission">AT Protocol: Permissions</a> — <abbr title="Namespaced Identifier">NSID</abbr>s and wildcards in permissions</li>
+			<li><a href="https://github.com/bluesky-social/atproto-interop-tests/tree/main/syntax">atproto-interop-tests</a> — <code>nsid_syntax_valid.txt</code> and <code>nsid_syntax_invalid.txt</code></li>
+			<li><a href="https://github.com/bluesky-social/atproto/blob/main/packages/syntax/src/nsid.ts"><code>@atproto/syntax</code> <code>nsid.ts</code></a> (TypeScript) and <a href="https://github.com/bluesky-social/indigo">indigo</a> <code>atproto/syntax/nsid.go</code> (Go) — length checks</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
