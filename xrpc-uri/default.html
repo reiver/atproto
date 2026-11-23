@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>ATProto XRPC-URI: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="api" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="open social web" />
+<meta name="category" content="social web" />
+<meta name="category" content="uri" />
+<meta name="category" content="xrpc" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="./" aria-current="page">XRPC-URI</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline"><abbr title="AT-Protocol">ATProto</abbr> XRPC-URI</h1>
+			<p>
+				<code>xrpc://</code> and <code>xrpc-unencrypted://</code> — one <abbr title="Uniform Resource Identifier">URI</abbr> for an <strong>XRPC</strong> end-point
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		An <strong>XRPC-URI</strong> is a <abbr title="Uniform Resource Identifier">URI</abbr> that names an <strong><a href="../xrpc/">XRPC</a></strong> end-point on a server.
+		It looks like this:
+	</p>
+	<figure>
+		<pre>
+xrpc://public.api.bsky.app/app.bsky.actor.getProfile?actor=bsky.app
+		</pre>
+	</figure>
+	<p>
+		And, it gets turned into (“resolved” to) the regular <abbr title="HyperText Transfer Protocol">HTTP</abbr> or WebSocket <abbr title="Uniform Resource Locator">URL</abbr> that you actually connect to:
+	</p>
+	<figure>
+		<pre>
+https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=bsky.app
+		</pre>
+	</figure>
+	<p>
+		<mark>The <strong>XRPC-URI</strong> is <em>not</em> part of the <abbr title="AT-Protocol">ATProto</abbr> specifications.
+		It was created by the author of this article (Charles Iliya Krempeaux), and is implemented in the Go package <a href="https://github.com/reiver/go-xrpcuri"><code>github.com/reiver/go-xrpcuri</code></a>.
+		<abbr title="AT-Protocol">ATProto</abbr> servers do not know about it, and do not need to — it is resolved by the client, before any request is made.</mark>
+	</p>
+	<p>
+		The package's README says:
+	</p>
+	<blockquote>
+		<p>
+			The <strong>XRPC-URI</strong> is not part of the https://atproto.com/specs/xrpc specification, but is instead something invented by this package.
+		</p>
+	</blockquote>
+	<section>
+		<h1>Two Schemes</h1>
+		<p>
+			There are 2 <abbr title="Uniform Resource Identifier">URI</abbr> schemes:
+		</p>
+		<dl>
+			<dt><code>xrpc</code></dt>
+			<dd>
+				<p>
+					encrypted — resolves to <code>https://</code> or <code>wss://</code>.
+					This is the one to use almost always.
+				</p>
+			</dd>
+
+			<dt><code>xrpc-unencrypted</code></dt>
+			<dd>
+				<p>
+					unencrypted — resolves to <code>http://</code> or <code>ws://</code>.
+					For local development and testing — for example, <code>xrpc-unencrypted://localhost:2583/com.atproto.server.describeServer</code>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			The long, awkward name of <code>xrpc-unencrypted</code> is on purpose.
+			Encrypted is the default, and gets the short name.
+			Unencrypted has to be asked for by name.
+			(The <abbr title="AT-Protocol">ATProto</abbr> XRPC specification requires <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> outside of local development, anyway.)
+		</p>
+	</section>
+	<section>
+		<h1>The Parts of an XRPC-URI</h1>
+		<figure>
+			<pre>
+xrpc://public.api.bsky.app/app.bsky.actor.getProfile?actor=bsky.app
+└┬─┘   └────────┬────────┘ └───────────┬───────────┘ └─────┬──────┘
+ │              │                      │                   │
+ │              │                      │           query parameters
+ │              │                      │
+ │              │           NSID (which end-point)
+ │              │
+ │         the server
+ │
+scheme
+			</pre>
+		</figure>
+		<p>
+			Compare that to the <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> <abbr title="Uniform Resource Locator">URL</abbr> it resolves to:
+		</p>
+		<figure>
+			<pre>
+https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=bsky.app
+└─┬─┘   └────────┬────────┘└─┬──┘└───────────┬───────────┘ └─────┬──────┘
+  │              │           │               │                   │
+  │              │           │               │           query parameters
+  │              │           │               │
+  │              │           │             NSID
+  │              │           │
+  │              │     always /xrpc/
+  │              │
+  │         the server
+  │
+scheme
+			</pre>
+		</figure>
+		<p>
+			So, there are 2 differences:
+		</p>
+		<ol>
+			<li>the scheme is <code>xrpc</code> (rather than <code>https</code>), and</li>
+			<li>there is no <code>/xrpc/</code> in the path — the path is just the <strong><a href="../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong>.</li>
+		</ol>
+		<p>
+			The <code>/xrpc/</code> can be left out because it is always there.
+			The XRPC specification says “Paths must always be top-level, not below a prefix.”
+			So, for an XRPC end-point, <code>/xrpc/</code> carries no information.
+			With it gone, the path of an <strong>XRPC-URI</strong> is exactly the <abbr title="Namespaced Identifier">NSID</abbr> — the name of the end-point's <strong><a href="../lexicon/">lexicon</a></strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Resolving an XRPC-URI</h1>
+		<p>
+			An <strong>XRPC-URI</strong> on its own does not say whether to use <abbr title="HyperText Transfer Protocol">HTTP</abbr> or WebSockets.
+			That depends on the <em>type</em> of the XRPC request — which comes from the end-point's <strong>lexicon</strong>:
+		</p>
+		<ul>
+			<li>a <strong>query</strong> (<abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code>),</li>
+			<li>a <strong>procedure</strong> (<abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>POST</code>), or</li>
+			<li>a <strong>subscription</strong> (WebSocket).</li>
+		</ul>
+		<p>
+			So, resolving takes 2 inputs: the <strong>XRPC-URI</strong>, and the request type.
+			The rules:
+		</p>
+		<table>
+			<thead>
+				<tr>
+					<th>scheme</th>
+					<th>query</th>
+					<th>procedure</th>
+					<th>subscription</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>xrpc</code></td>
+					<td><code>https</code></td>
+					<td><code>https</code></td>
+					<td><code>wss</code></td>
+				</tr>
+				<tr>
+					<td><code>xrpc-unencrypted</code></td>
+					<td><code>http</code></td>
+					<td><code>http</code></td>
+					<td><code>ws</code></td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			And, <code>/xrpc/</code> is put back in front of the <abbr title="Namespaced Identifier">NSID</abbr>.
+			For example:
+		</p>
+		<table>
+			<thead>
+				<tr>
+					<th>XRPC-URI</th>
+					<th>request type</th>
+					<th>resolves to</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td><code>xrpc://public.api.bsky.app/app.bsky.actor.getProfile?actor=bsky.app</code></td>
+					<td>query</td>
+					<td><code>https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=bsky.app</code></td>
+				</tr>
+				<tr>
+					<td><code>xrpc://example.com/com.example.createThing</code></td>
+					<td>procedure</td>
+					<td><code>https://example.com/xrpc/com.example.createThing</code></td>
+				</tr>
+				<tr>
+					<td><code>xrpc://bsky.network/com.atproto.sync.subscribeRepos</code></td>
+					<td>subscription</td>
+					<td><code>wss://bsky.network/xrpc/com.atproto.sync.subscribeRepos</code></td>
+				</tr>
+				<tr>
+					<td><code>xrpc-unencrypted://localhost:2583/com.atproto.server.describeServer</code></td>
+					<td>query</td>
+					<td><code>http://localhost:2583/xrpc/com.atproto.server.describeServer</code></td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			(The firehose example is from the <a href="../service/relay/"><abbr title="AT-Protocol">ATProto</abbr> Relay</a> article.
+			Notice that the <strong>XRPC-URI</strong> for the firehose looks just like the one for any other end-point.
+			Only the request type is different.)
+		</p>
+		<p>
+			The package's README compares this to how most developers do not think about how an <abbr title="HyperText Transfer Protocol">HTTP</abbr> <abbr title="Uniform Resource Identifier">URI</abbr> becomes a <abbr title="Transmission Control Protocol">TCP</abbr> connection:
+		</p>
+		<blockquote>
+			<p>
+				MOST DEVELOPERS WHO ARE JUST MAKING XRPC CLIENT REQUESTS DO NOT HAVE TO WORRY ABOUT THE DETAILS OF THE RESOLUTION.
+				IN THE SAME WAY THAT MOST DEVELOPERS DO NOT HAVE TO WORRY ABOUT HOW HTTP URIS ARE RESOLVED TO TCP.
+			</p>
+		</blockquote>
+		<section>
+			<h1>“Execute” and “Procedure”</h1>
+			<p>
+				The Go package also accepts <code>execute</code> as another name for <code>procedure</code>.
+				A code comment explains why — so that all the request types can be verbs:
+				<em>execute</em>, <em>query</em>, <em>subscribe</em>.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Rules</h1>
+		<p>
+			Here are the rules, as implemented by <code>go-xrpcuri</code>.
+			(There is no separate written specification — the package is the reference.)
+		</p>
+		<dl>
+			<dt>The scheme is case-insensitive.</dt>
+			<dd>
+				<p>
+					<code>XRPC://…</code> works the same as <code>xrpc://…</code>.
+					(This is the same as every <abbr title="Uniform Resource Identifier">URI</abbr> scheme, per <abbr title="Request for Comments">RFC</abbr> 3986.)
+				</p>
+			</dd>
+
+			<dt>The server (the “authority”) is required.</dt>
+			<dd>
+				<p>
+					<code>xrpc:///com.example.fooBar</code> is an error — “has an empty 'authority'”.
+					A port number is allowed — <code>localhost:2583</code>.
+					The server name is normalized to lower-case.
+				</p>
+			</dd>
+
+			<dt>No user-name or password.</dt>
+			<dd>
+				<p>
+					An <code>@</code> in the authority is not allowed.
+					So, <code>xrpc://alice@example.com/…</code> is an error.
+					(Logging in is done with <abbr title="HyperText Transfer Protocol">HTTP</abbr> headers — not in the <abbr title="Uniform Resource Identifier">URI</abbr>.)
+				</p>
+			</dd>
+
+			<dt>The path must be an <abbr title="Namespaced Identifier">NSID</abbr>.</dt>
+			<dd>
+				<p>
+					<code>xrpc://example.com/not-an-nsid</code> is an error.
+					The <abbr title="Namespaced Identifier">NSID</abbr> is normalized the <abbr title="Namespaced Identifier">NSID</abbr> way — the domain part is lower-cased, but the name part keeps its case.
+					So, <code>APP.BSKY.actor.getProfile</code> becomes <code>app.bsky.actor.getProfile</code> (and <em>not</em> <code>app.bsky.actor.getprofile</code>).
+				</p>
+			</dd>
+
+			<dt>The query string is passed through.</dt>
+			<dd>
+				<p>
+					Everything after the <code>?</code> is carried over to the resolved <abbr title="Uniform Resource Locator">URL</abbr>.
+					It follows the usual XRPC rules for query parameters.
+				</p>
+			</dd>
+
+			<dt>Regular URLs are left alone.</dt>
+			<dd>
+				<p>
+					If you give <code>xrpcuri.Resolve()</code> an <code>https://</code>, <code>http://</code>, <code>wss://</code>, or <code>ws://</code> <abbr title="Uniform Resource Locator">URL</abbr>, it returns it unchanged.
+					So, code that takes an <strong>XRPC-URI</strong> also accepts a plain <abbr title="Uniform Resource Locator">URL</abbr>.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			For example, both of these normalize to the same <strong>XRPC-URI</strong>:
+		</p>
+		<figure>
+			<pre>
+XRPC://Public.API.Bsky.App/APP.BSKY.actor.getProfile?actor=bsky.app
+xrpc://public.api.bsky.app/app.bsky.actor.getProfile?actor=bsky.app
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>XRPC-URIs and AT-URIs</h1>
+		<p>
+			<abbr title="AT-Protocol">ATProto</abbr> already has a <abbr title="Uniform Resource Identifier">URI</abbr> scheme — <code>at://</code>.
+			They name different things:
+		</p>
+		<table>
+			<thead>
+				<tr>
+					<th></th>
+					<th><code>at://</code></th>
+					<th><code>xrpc://</code></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>names</td>
+					<td>data — a repository, a collection, or a <a href="../record/">record</a></td>
+					<td>an end-point on a server</td>
+				</tr>
+				<tr>
+					<td>authority</td>
+					<td>an account — a <abbr title="Decentralized Identifier">DID</abbr> or a handle</td>
+					<td>a server — a host name (and port)</td>
+				</tr>
+				<tr>
+					<td>path</td>
+					<td>collection <abbr title="Namespaced Identifier">NSID</abbr> + record key</td>
+					<td>end-point <abbr title="Namespaced Identifier">NSID</abbr></td>
+				</tr>
+				<tr>
+					<td>example</td>
+					<td><code>at://bsky.app/app.bsky.feed.post/3n2opitxdyc2j</code></td>
+					<td><code>xrpc://public.api.bsky.app/app.bsky.feed.getPosts</code></td>
+				</tr>
+				<tr>
+					<td>defined by</td>
+					<td>the <abbr title="AT-Protocol">ATProto</abbr> specifications</td>
+					<td><code>go-xrpcuri</code></td>
+				</tr>
+				<tr>
+					<td>registered with <abbr title="Internet Assigned Numbers Authority">IANA</abbr></td>
+					<td>yes (provisional)</td>
+					<td>no</td>
+				</tr>
+			</tbody>
+		</table>
+		<p>
+			An <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr> does not say which server to ask.
+			(To find out, you resolve the account's <a href="../how-to/resolve-did-to-pds/">DID to its PDS</a>.)
+			An <code>xrpc://</code> <abbr title="Uniform Resource Identifier">URI</abbr> always does.
+		</p>
+	</section>
+	<section>
+		<h1>Implementations</h1>
+		<ul>
+			<li>
+				<a href="https://github.com/reiver/go-xrpcuri"><code>github.com/reiver/go-xrpcuri</code></a> (Go) — parsing, normalizing, validating, joining, and resolving <strong>XRPC-URIs</strong>.
+			</li>
+			<li>
+				<a href="https://github.com/reiver/go-xrpc"><code>github.com/reiver/go-xrpc</code></a> (Go) — an XRPC client (and server) that takes <strong>XRPC-URIs</strong>.
+				For example, <code>xrpc.Query(&amp;response, "xrpc://public.api.bsky.app/app.bsky.actor.getProfile?actor=reiver.bsky.social")</code>.
+				(<strong>XRPC-URIs</strong> first appeared here, in August 2024, and were moved into <code>go-xrpcuri</code> in 2025.)
+			</li>
+		</ul>
+		<p>
+			Since resolving is simple, it is easy to implement in other programming languages:
+			check and remove the scheme,
+			lower-case the server name,
+			check the <abbr title="Namespaced Identifier">NSID</abbr>,
+			and then put together <code>https://</code> (or <code>wss://</code>, <code>http://</code>, <code>ws://</code>) + server + <code>/xrpc/</code> + <abbr title="Namespaced Identifier">NSID</abbr> + query.
+		</p>
+	</section>
+	<section>
+		<h1>Example Code</h1>
+		<p>
+			Here is a small Go program that resolves an <strong>XRPC-URI</strong> with <code>go-xrpcuri</code>, and then makes the request with the standard library:
+		</p>
+		<figure>
+			<pre>
+<code>package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/reiver/go-xrpcuri"
+)
+
+func main() {
+	// One string says everything: which server, which end-point, and the parameters.
+	const uri = "xrpc://public.api.bsky.app/com.atproto.identity.resolveHandle?handle=bsky.app"
+
+	// A query is an HTTP GET, so ask for the URL to use for a "query".
+	url, err := xrpcuri.Resolve(uri, xrpcuri.RequestTypeQuery)
+	if nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("xrpc-uri:", uri)
+	fmt.Println("url:     ", url)
+
+	resp, err := http.Get(url)
+	if nil != err {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		DID string `json:"did"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&amp;result); nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("did:     ", result.DID)
+}</code>
+			</pre>
+		</figure>
+		<p>
+			Running it, on November 22nd, 2026, printed:
+		</p>
+		<figure>
+			<pre>
+xrpc-uri: xrpc://public.api.bsky.app/com.atproto.identity.resolveHandle?handle=bsky.app
+url:      https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=bsky.app
+did:      did:plc:z72i7hdynmk6r22z27h6tvur
+			</pre>
+		</figure>
+		<p>
+			And, here is what <code>xrpcuri.Resolve()</code> returned for some other inputs:
+		</p>
+		<figure>
+			<pre>
+query      xrpc-unencrypted://localhost:2583/com.atproto.server.describeServer
+           → http://localhost:2583/xrpc/com.atproto.server.describeServer
+subscribe  xrpc://bsky.network/com.atproto.sync.subscribeRepos
+           → wss://bsky.network/xrpc/com.atproto.sync.subscribeRepos
+query      XRPC://Public.API.Bsky.App/APP.BSKY.actor.getProfile?actor=bsky.app
+           → https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=bsky.app
+query      xrpc://alice@example.com/com.example.fooBar
+           ERROR: xrpcuri: XRPC-URI "xrpc://alice@example.com/com.example.fooBar" may not have an "@" in its authority "alice@example.com"
+query      xrpc://example.com/not-an-nsid
+           ERROR: xrpcuri: XRPC-URI "xrpc://example.com/not-an-nsid" has an id "not-an-nsid" that is not a valid NSID: nsid: nsid ("not-an-nsid") should have at least 3 segments but actually has 1
+			</pre>
+		</figure>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			An <strong>XRPC-URI</strong>:
+		</p>
+		<ol>
+			<li>names an <strong>XRPC</strong> end-point on a server — <code>xrpc://<em>server</em>/<em>NSID</em>?<em>parameters</em></code>,</li>
+			<li>is not part of the <abbr title="AT-Protocol">ATProto</abbr> specifications — it comes from <code>go-xrpcuri</code>,</li>
+			<li>has 2 schemes — <code>xrpc</code> (encrypted) and <code>xrpc-unencrypted</code> (for local development),</li>
+			<li>leaves out <code>/xrpc/</code>, since every XRPC path has it,</li>
+			<li>is resolved by the client — to <code>https</code> / <code>http</code> for queries and procedures, and <code>wss</code> / <code>ws</code> for subscriptions, and</li>
+			<li>is different from an <code>at://</code> <abbr title="Uniform Resource Identifier">URI</abbr>, which names data rather than an end-point.</li>
+		</ol>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://github.com/reiver/go-xrpcuri">github.com/reiver/go-xrpcuri</a> — README and source code (as of commit <code>ef8670c</code>, May 6th, 2025)</li>
+			<li><a href="https://github.com/reiver/go-xrpc">github.com/reiver/go-xrpc</a> — README, and git history (the <code>xrpc-unencrypted</code> scheme first appears in August 2024)</li>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol: HTTP API (XRPC)</a> (fetched November 22nd, 2026)</li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc3986">RFC 3986: Uniform Resource Identifier (URI): Generic Syntax</a></li>
+			<li><a href="https://www.iana.org/assignments/uri-schemes/uri-schemes.xhtml">IANA: Uniform Resource Identifier (URI) Schemes</a> (checked November 22nd, 2026 — <code>at</code> is listed as provisional; <code>xrpc</code> is not listed)</li>
+			<li>Live request, November 22nd, 2026: <code>public.api.bsky.app</code> (<code>com.atproto.identity.resolveHandle</code>)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../author.html" />
+		<include src="../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>

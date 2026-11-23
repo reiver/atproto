@@ -79,6 +79,10 @@ https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=bsky.
 			And, the specification says “Paths must always be top-level, not below a prefix.”
 			(So, <code>https://example.com/api/xrpc/…</code> is not allowed.)
 		</p>
+		<p>
+			(Since the <code>/xrpc/</code> is always there, it can be left out — which is what an <code>xrpc://</code> <abbr title="Uniform Resource Identifier">URI</abbr> does.
+			For more, see: <a href="../xrpc-uri/"><abbr title="AT-Protocol">ATProto</abbr> XRPC-URI</a>.)
+		</p>
 	</section>
 	<section>
 		<h1>Queries and Procedures</h1>
