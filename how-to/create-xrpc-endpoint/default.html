@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" vocab="https://schema.org/" typeof="TechArticle" class="article">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="/text-readability/readmode.css" />
+<title>How-To Create an ATProto XRPC API End-Point: A Developers' Guide</title>
+<meta name="author" content="Charles Iliya Krempeaux" />
+<meta name="category" content="api" />
+<meta name="category" content="atomsphere" />
+<meta name="category" content="atproto" />
+<meta name="category" content="how-to" />
+<meta name="category" content="http" />
+<meta name="category" content="lexicon" />
+<meta name="category" content="namespaced identifier" />
+<meta name="category" content="nsid" />
+<meta name="category" content="open social web" />
+<meta name="category" content="rpc" />
+<meta name="category" content="social web" />
+<meta name="category" content="xrpc" />
+</head>
+<body>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="../../">AT-Protocol (<abbr title="AT-Protocol">ATProto</abbr>)</a></li>
+		<li><a href="../">How-To</a></li>
+		<li><a href="./" aria-current="page">Create an XRPC API End-Point</a></li>
+	</ol>
+</nav>
+
+<main>
+<article>
+	<header>
+		<hgroup>
+			<h1 property="headline">How-To Create an XRPC <abbr title="Application Programming Interface">API</abbr> End-Point</h1>
+			<p>
+				<code>/xrpc/</code>
+				<code>com.example.math.add</code>
+				<code>link.reiver.math.add</code>
+			</p>
+		</hgroup>
+		<p>
+			by <a href="https://reiver.link/">Charles Iliya Krempeaux</a>
+		</p>
+	</header>
+	<p>
+		<strong><abbr title="AT-Protocol">ATProro</abbr></strong> does API calls over something it calls <strong>XRPC</strong>.
+		But, despite <strong><abbr title="AT-Protocol">ATProro</abbr></strong> being very much associated with social media, Bluesky, and the ATmosphere (Blacksky, rpg.actor, Tangled, etc)
+		—
+		<strong>XRPC</strong> has nothing to do with any of those things.
+		<strong>XRPC</strong> is just a way of creating <abbr title="application programming interface">API</abbr>s.
+	</p>
+	<p>
+		For example, you could make an <strong>XRPC</strong> <abbr title="application programming interface">API</abbr> end-point to at 2 integers.
+		In fact, that example is a good way to learn and understand <strong>XRPC</strong>.
+		So, let's do that.
+	</p>
+	<p>
+		This article goes over how-to <strong>create</strong> an <strong>AT-Protocol</strong> (<strong><abbr title="AT-Protocol">ATProto</abbr></strong>) <strong><a href="../../xrpc/">XRPC</a></strong> <abbr title="Application Programming Interface">API</abbr> end-point, from beginning to end, from a computer-programming point-of-view.
+	</p>
+	<p>
+		We will make an end-point that adds 2 numbers together.
+		You send it <code>2</code> and <code>3</code>.
+		It sends back <code>5</code>.
+	</p>
+	<figure>
+		<pre>
+$ curl -X POST -H 'Content-Type: application/json' -d '{"a":2,"b":3}' http://localhost:8080/xrpc/com.example.math.add
+{"sum":5}
+		</pre>
+	</figure>
+	<p>
+		That is deliberately boring.
+		There are no posts, no likes, no followers, and no timelines.
+		That is the point:
+	</p>
+	<p>
+		<mark>There is nothing social-media about <strong>XRPC</strong>, and nothing Bluesky-specific about it.
+		<strong>XRPC</strong> is just a way of doing <abbr title="Remote Procedure Call">RPC</abbr> <abbr title="Application Programming Interface">API</abbr>s over <abbr title="HyperText Transfer Protocol">HTTP</abbr> and <abbr title="JavaScript Object Notation">JSON</abbr>.
+		<strong><abbr title="AT-Protocol">ATProto</abbr></strong> happens to use it for its social features — but you can use it for anything.</mark>
+	</p>
+	<section>
+		<h1>What You Need, and What You Do Not Need</h1>
+		<p>
+			To make an <strong>XRPC</strong> end-point, you need:
+		</p>
+		<ul>
+			<li>an <abbr title="HyperText Transfer Protocol">HTTP</abbr> server, and</li>
+			<li>a <abbr title="JavaScript Object Notation">JSON</abbr> library.</li>
+		</ul>
+		<p>
+			That is it.
+			(The example code in this article uses only the Go standard library.)
+		</p>
+		<p>
+			You do <em>not</em> need:
+		</p>
+		<ul>
+			<li>a Bluesky account,</li>
+			<li>an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> account,</li>
+			<li>a <strong><a href="../../service/pds/"><abbr title="Personal Data Server">PDS</abbr></a></strong> (personal data server),</li>
+			<li>a <strong><abbr title="decentralized identifier">DID</abbr></strong> or a handle,</li>
+			<li>a repository, a firehose, or a relay, or</li>
+			<li>an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> library.</li>
+		</ul>
+		<p>
+			(There is one exception.
+			<em>Publishing</em> your <strong>Lexicon</strong> so that other people's software can find it does use an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> account.
+			But, that is optional, and the end-point works without it.
+			We will get to that at the end.)
+		</p>
+	</section>
+	<section>
+		<h1>Overview</h1>
+		<p>
+			Creating an <strong>XRPC</strong> end-point has 5 steps:
+		</p>
+		<ol>
+			<li>choose a name for it — an <strong><a href="../../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong>,</li>
+			<li>decide if it is a <strong>query</strong> or a <strong>procedure</strong>,</li>
+			<li>write a <strong><a href="../../lexicon/">Lexicon</a></strong> — a schema that says what goes in, and what comes out,</li>
+			<li>write the server, and</li>
+			<li>call it.</li>
+		</ol>
+		<figure>
+			<pre>
+step  what                           for this article
+────  ─────────────────────────────  ─────────────────────
+ 1    choose an NSID                 com.example.math.add
+ 2    pick query or procedure        procedure (HTTP POST)
+ 3    write the Lexicon              add.json
+ 4    write the server               main.go
+ 5    call it                        curl
+			</pre>
+		</figure>
+		<p>
+			After that, we will look at a problem with the name <code>com.example.math.add</code>, and switch to a domain that is real.
+		</p>
+	</section>
+	<section>
+		<h1>Step 1: Choose an NSID</h1>
+		<p>
+			Every <strong>XRPC</strong> end-point has a name.
+			That name is an <strong><a href="../../nsid/"><abbr title="Namespaced Identifier">NSID</abbr></a></strong> (short for <em>Namespaced Identifier</em>).
+		</p>
+		<p>
+			We will start with this one:
+		</p>
+		<pre><code>
+com.example.math.add
+		</code></pre>
+		<p>
+			An <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> is an Internet domain written backwards, with a name on the end:
+		</p>
+		<figure>
+			<pre>
+com.example.math.add
+└──────┬───────┘ └┬┘
+       │          │
+   authority    name
+			</pre>
+		</figure>
+		<p>
+			The <strong>authority</strong> is <code>com.example.math</code>.
+			Written forwards, that is the Internet domain <code>math.example.com</code>.
+			Notice that it is <code>math.example.com</code> — <em>not</em> <code>example.com</code>.
+			Every segment except the last one is part of the domain.
+		</p>
+		<p>
+			The <strong>name</strong> is <code>add</code>.
+		</p>
+		<p>
+			The idea is that whoever controls the domain <code>math.example.com</code> gets to decide what <code>com.example.math.add</code> means.
+			(That will matter later.)
+		</p>
+		<p>
+			A note on the name:
+			the <a href="https://atproto.com/guides/lexicon-style-guide">Lexicon Style Guide</a> suggests “verb-noun” names for end-points — such as <code>getPost</code>, <code>listLikes</code>, or <code>createRecord</code>.
+			<code>add</code> is just a verb.
+			It is still a valid <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, and it reads well, so we will keep it.
+			But, for a real project, a name like <code>addNumbers</code> would follow the style guide more closely.
+		</p>
+		<p>
+			(The rules for the name: it can only use the ASCII letters <code>A</code>–<code>Z</code> and <code>a</code>–<code>z</code>, and the digits <code>0</code>–<code>9</code>.
+			It cannot start with a digit.
+			And, it is case-sensitive — <code>add</code> and <code>Add</code> are different names.)
+		</p>
+	</section>
+	<section>
+		<h1>Step 2: Query or Procedure?</h1>
+		<p>
+			An <strong>XRPC</strong> end-point is one of 2 types:
+		</p>
+		<dl>
+			<dt>query — <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>GET</code></dt>
+			<dd>
+				<p>
+					reads something.
+					The inputs go in the <abbr title="Uniform Resource Locator">URL</abbr>'s query string.
+					The specification says queries “are cacheable and should not mutate resource state.”
+				</p>
+			</dd>
+
+			<dt>procedure — <abbr title="HyperText Transfer Protocol">HTTP</abbr> <code>POST</code></dt>
+			<dd>
+				<p>
+					does something.
+					The inputs usually go in a <abbr title="JavaScript Object Notation">JSON</abbr> request body.
+					The specification says procedures “are not cacheable and may mutate state.”
+				</p>
+			</dd>
+		</dl>
+		<p>
+			We will make <code>com.example.math.add</code> a <strong>procedure</strong>.
+		</p>
+		<p>
+			(To be honest, adding 2 numbers does not change anything, and the answer could be cached.
+			So, it could have been a <strong>query</strong> instead — <code>GET /xrpc/com.example.math.add?a=2&amp;b=3</code>.
+			That would also be fine.
+			We are making it a <strong>procedure</strong> because a <strong>procedure</strong> shows more of how <strong>XRPC</strong> works — a request body, a response body, and the <code>Content-Type</code> header.
+			Note that the specification says a <strong>procedure</strong> “<em>may</em> mutate state” — not that it <em>must</em>.)
+		</p>
+	</section>
+	<section>
+		<h1>Step 3: Write the Lexicon</h1>
+		<p>
+			A <strong><a href="../../lexicon/">Lexicon</a></strong> is a schema, written in <abbr title="JavaScript Object Notation">JSON</abbr>.
+			For an end-point, it says what the request looks like, and what the response looks like.
+			It is the <em>contract</em> between the server and its clients.
+		</p>
+		<p>
+			Here is the <strong>Lexicon</strong> for <code>com.example.math.add</code>:
+		</p>
+		<figure>
+			<pre><code>
+{
+  "lexicon": 1,
+  "id": "com.example.math.add",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Adds 2 integers together, and returns the sum.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["a", "b"],
+          "properties": {
+            "a": {
+              "type": "integer",
+              "minimum": -1000000000000000,
+              "maximum": 1000000000000000
+            },
+            "b": {
+              "type": "integer",
+              "minimum": -1000000000000000,
+              "maximum": 1000000000000000
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["sum"],
+          "properties": {
+            "sum": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+			</code></pre>
+		</figure>
+		<p>
+			Let's go through it, piece by piece:
+		</p>
+		<dl>
+			<dt><code>"lexicon": 1</code></dt>
+			<dd>
+				<p>
+					the version of the <strong>Lexicon</strong> language.
+					It is always <code>1</code> (for now).
+				</p>
+			</dd>
+
+			<dt><code>"id": "com.example.math.add"</code></dt>
+			<dd>
+				<p>
+					the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> from step 1.
+				</p>
+			</dd>
+
+			<dt><code>"defs"</code> and <code>"main"</code></dt>
+			<dd>
+				<p>
+					a <strong>Lexicon</strong> file can hold more than one definition.
+					The one named <code>main</code> is the end-point itself.
+				</p>
+			</dd>
+
+			<dt><code>"type": "procedure"</code></dt>
+			<dd>
+				<p>
+					the choice from step 2.
+					(For a query, this would be <code>"query"</code>.)
+				</p>
+			</dd>
+
+			<dt><code>"input"</code></dt>
+			<dd>
+				<p>
+					what the request body looks like:
+					<abbr title="JavaScript Object Notation">JSON</abbr>, with 2 required fields, <code>a</code> and <code>b</code>, that are both integers.
+				</p>
+			</dd>
+
+			<dt><code>"output"</code></dt>
+			<dd>
+				<p>
+					what the response body looks like:
+					<abbr title="JavaScript Object Notation">JSON</abbr>, with 1 field, <code>sum</code>, that is an integer.
+				</p>
+			</dd>
+		</dl>
+		<p>
+			So, a request body looks like this:
+		</p>
+		<pre><code>
+{"a":2,"b":3}
+		</code></pre>
+		<p>
+			And, a response body looks like this:
+		</p>
+		<pre><code>
+{"sum":5}
+		</code></pre>
+		<p>
+			By convention, <strong>Lexicon</strong> files are stored in a directory tree that follows the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+			So, this one would be saved as:
+		</p>
+		<pre><code>
+lexicons/com/example/math/add.json
+		</code></pre>
+		<section>
+			<h1>Only Integers — No Decimals</h1>
+			<p>
+				You might have noticed that <code>a</code> and <code>b</code> are <em>integers</em> — not just “numbers”.
+				That is not a choice we made.
+				It is a rule.
+			</p>
+			<p>
+				<strong>Lexicon</strong> does <em>not</em> have a floating-point type.
+				There is no <code>float</code>, no <code>double</code>, no <code>decimal</code>, and no <code>number</code>.
+				The <strong><abbr title="AT-Protocol">ATProto</abbr></strong> data model specification says floats are “not allowed in atproto”.
+			</p>
+			<p>
+				So, our end-point can add <code>2</code> and <code>3</code>.
+				But, it cannot add <code>2.5</code> and <code>3</code>.
+			</p>
+			<p>
+				(Why?
+				The same data model is used for records stored in <strong><abbr title="AT-Protocol">ATProto</abbr></strong> repositories, where data is identified by its hash.
+				Floating-point numbers do not always encode back to the exact same bytes after being decoded, which would change the hash.
+				If you really need decimals, the specification suggests sending them as strings — for example, <code>"2.5"</code>.)
+			</p>
+		</section>
+		<section>
+			<h1>Why the Minimum and Maximum?</h1>
+			<p>
+				The <code>minimum</code> and <code>maximum</code> limit <code>a</code> and <code>b</code> to between negative 1 quadrillion and positive 1 quadrillion:
+			</p>
+			<pre><code>
+-1000000000000000  to  1000000000000000
+			</code></pre>
+			<p>
+				<strong>Lexicon</strong> integers can be up to 64 bits.
+				But, JavaScript can only handle integers up to 53 bits exactly — that is, up to <code>9007199254740991</code>.
+				After that, JavaScript silently rounds them.
+				For this reason, the specification says integers “should be limited to 53 bits of precision.”
+			</p>
+			<p>
+				This is not just a theory.
+				I ran the official JavaScript <strong>XRPC</strong> server library (<code>@atproto/xrpc-server</code>), with this same <strong>Lexicon</strong> but without the limits, and asked it to add <code>9007199254740993</code> and <code>0</code>.
+				It answered:
+			</p>
+			<pre><code>
+{"sum":9007199254740992}
+			</code></pre>
+			<p>
+				That is the wrong answer — and there was no error.
+			</p>
+			<p>
+				With the limits, the biggest possible sum is 2 quadrillion (<code>2000000000000000</code>).
+				That is well under the 53-bit limit.
+				So, the answer is always exact — in any programming-language.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Step 4: Write the Server</h1>
+		<p>
+			An <strong>XRPC</strong> end-point lives at <code>/xrpc/</code>, followed by its <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>:
+		</p>
+		<figure>
+			<pre>
+http://localhost:8080/xrpc/com.example.math.add
+└─────────┬─────────┘└─┬──┘└────────┬─────────┘
+          │            │            │
+      the server  always /xrpc/   NSID
+			</pre>
+		</figure>
+		<p>
+			(The specification says the path must be at the top-level.
+			So, <code>http://localhost:8080/api/xrpc/com.example.math.add</code> would <em>not</em> be allowed.)
+		</p>
+		<p>
+			When a request comes in, our server will do 5 things, in order:
+		</p>
+		<ol>
+			<li>check that the <abbr title="HyperText Transfer Protocol">HTTP</abbr> method is <code>POST</code> (because it is a <strong>procedure</strong>),</li>
+			<li>check that the <code>Content-Type</code> is <code>application/json</code>,</li>
+			<li>read the <abbr title="JavaScript Object Notation">JSON</abbr> request body,</li>
+			<li>check the input against the <strong>Lexicon</strong> — both fields there, both integers, both within the limits, and</li>
+			<li>add the 2 numbers, and send back the sum.</li>
+		</ol>
+		<p>
+			If any check fails, the server sends back an <strong>XRPC</strong> error.
+			An <strong>XRPC</strong> error is <abbr title="JavaScript Object Notation">JSON</abbr> with 2 fields:
+		</p>
+		<dl>
+			<dt><code>error</code></dt>
+			<dd><p>required — the name of the error, in <code>UpperCamelCase</code>, with no spaces (for example, <code>InvalidRequest</code>).</p></dd>
+
+			<dt><code>message</code></dt>
+			<dd><p>optional — a description of what went wrong, for humans.</p></dd>
+		</dl>
+		<p>
+			For example:
+		</p>
+		<pre><code>
+{"error":"InvalidRequest","message":"Content-Type must be application/json"}
+		</code></pre>
+		<p>
+			Here is the whole server, in the Go programming-language, using only the standard library:
+		</p>
+		<figure>
+			<pre><code>
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"mime"
+	"net/http"
+)
+
+// The NSID of our XRPC end-point.
+const nsid = "com.example.math.add"
+
+// The smallest and largest numbers we accept.
+// (These match the "minimum" and "maximum" in the Lexicon.)
+const minimum = -1_000_000_000_000_000
+const maximum = 1_000_000_000_000_000
+
+// The request body.
+// (Pointers are used so we can tell if a field is missing.)
+type addInput struct {
+	A *int64 `json:"a"`
+	B *int64 `json:"b"`
+}
+
+// The response body.
+type addOutput struct {
+	Sum int64 `json:"sum"`
+}
+
+// writeJSON sends a JSON response.
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(value)
+}
+
+// writeError sends an XRPC error response.
+func writeError(w http.ResponseWriter, status int, name string, message string) {
+	writeJSON(w, status, map[string]string{
+		"error":   name,
+		"message": message,
+	})
+}
+
+// add handles the com.example.math.add end-point.
+func add(w http.ResponseWriter, r *http.Request) {
+	// 1. It is a procedure, so it must be POST.
+	if http.MethodPost != r.Method {
+		writeError(w, http.StatusBadRequest, "InvalidRequest", "Incorrect HTTP method ("+r.Method+") expected POST")
+		return
+	}
+
+	// 2. The body must be JSON.
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if nil != err || "application/json" != mediaType {
+		writeError(w, http.StatusBadRequest, "InvalidRequest", "Content-Type must be application/json")
+		return
+	}
+
+	// 3. Read the JSON body (at most 1 KiB).
+	var input addInput
+	err = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&amp;input)
+	if nil != err {
+		writeError(w, http.StatusBadRequest, "InvalidRequest", "Invalid JSON: "+err.Error())
+		return
+	}
+
+	// 4. Check the input against the Lexicon.
+	if nil == input.A || nil == input.B {
+		writeError(w, http.StatusBadRequest, "InvalidRequest", `Input must have the properties "a" and "b"`)
+		return
+	}
+	a, b := *input.A, *input.B
+	if a &lt; minimum || maximum &lt; a || b &lt; minimum || maximum &lt; b {
+		writeError(w, http.StatusBadRequest, "InvalidRequest", fmt.Sprintf("Input numbers must be from %d to %d", minimum, maximum))
+		return
+	}
+
+	// 5. Do the work, and send the result.
+	writeJSON(w, http.StatusOK, addOutput{Sum: a + b})
+}
+
+// notImplemented handles every other XRPC end-point.
+func notImplemented(w http.ResponseWriter, r *http.Request) {
+	writeError(w, http.StatusNotImplemented, "MethodNotImplemented", "Method Not Implemented")
+}
+
+func main() {
+	http.HandleFunc("/xrpc/"+nsid, add)
+	http.HandleFunc("/xrpc/", notImplemented)
+
+	log.Println("listening on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+			</code></pre>
+		</figure>
+		<p>
+			A few things to note:
+		</p>
+		<ul>
+			<li>
+				It is just <code>net/http</code> and <code>encoding/json</code>.
+				No <strong><abbr title="AT-Protocol">ATProto</abbr></strong> library.
+				No Bluesky library.
+			</li>
+			<li>
+				The fields are <code>*int64</code> (pointers), not <code>int64</code>.
+				If a field is missing from the <abbr title="JavaScript Object Notation">JSON</abbr>, Go would otherwise just set it to <code>0</code> — and we could not tell the difference between <code>{"a":2}</code> and <code>{"a":2,"b":0}</code>.
+			</li>
+			<li>
+				Decoding into an <code>int64</code> means Go rejects decimals (like <code>2.5</code>) and strings (like <code>"2"</code>) for us.
+			</li>
+			<li>
+				Extra fields (for example, <code>{"a":2,"b":3,"c":9}</code>) are ignored.
+				That is on purpose.
+				The <strong>Lexicon</strong> specification says unexpected fields “should be ignored”, so that a <strong>Lexicon</strong> can add new optional fields in the future without breaking old servers.
+			</li>
+			<li>
+				Using the wrong <abbr title="HyperText Transfer Protocol">HTTP</abbr> method returns <code>400</code> with <code>InvalidRequest</code>.
+				That is what the official <strong>XRPC</strong> server library does too.
+			</li>
+		</ul>
+		<section>
+			<h1>What About Other NSIDs?</h1>
+			<p>
+				The last handler, <code>/xrpc/</code>, catches requests for any <em>other</em> <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> — for example, <code>com.example.math.subtract</code>, which we did not make.
+				It returns <code>501</code> with the error name <code>MethodNotImplemented</code>.
+			</p>
+			<p>
+				Why <code>501</code>, and not <code>404</code>?
+			</p>
+			<ul>
+				<li>The official <strong>XRPC</strong> server library (<code>@atproto/xrpc-server</code>) returns <code>501</code> <code>MethodNotImplemented</code> for an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> it does not have.</li>
+				<li>The official <strong>XRPC</strong> client library (<code>@atproto/xrpc</code>) treats a <code>404</code> as “XRPC Not Supported” — meaning that the server does not do <strong>XRPC</strong> at all.</li>
+			</ul>
+			<p>
+				So, <code>501</code> tells a client the most accurate thing: “this server does <strong>XRPC</strong>, but not <em>that</em> end-point.”
+			</p>
+			<p>
+				(The specification itself is a bit vague here.
+				It says <code>404</code> can mean the server “does not support this endpoint”, and <code>501</code> means the end-point “is known, but not implemented”.
+				And, in practice, servers vary — when I asked Bluesky's public <abbr title="Application Programming Interface">API</abbr> server for <code>com.example.math.add</code>, it returned <code>405</code>.
+				So, if you write a client, be ready for any of these.)
+			</p>
+		</section>
+		<section>
+			<h1>Does the Server Read the Lexicon File?</h1>
+			<p>
+				No.
+				Our server does not read <code>add.json</code>.
+				Instead, the checks in the code follow the <strong>Lexicon</strong> by hand — the 2 required fields, the integer type, and the same <code>minimum</code> and <code>maximum</code>.
+			</p>
+			<p>
+				That is fine for one small end-point.
+				For bigger projects, there are tools that read <strong>Lexicon</strong> files and generate code for you — such as <code>@atproto/lex-cli</code> (for TypeScript), and <code>lexgen</code> in Bluesky's <code>indigo</code> repository (for Go).
+				But, you do not need them.
+			</p>
+			<p>
+				Even when the server does not read it, the <strong>Lexicon</strong> is still useful.
+				It is the documentation.
+				It tells anyone who wants to call your end-point exactly what to send, and what they will get back.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Step 5: Call It</h1>
+		<p>
+			Save the code as <code>main.go</code>, and run it:
+		</p>
+		<figure>
+			<pre>
+$ go run main.go
+2026/11/25 14:42:10 listening on http://localhost:8080
+			</pre>
+		</figure>
+		<p>
+			Then, in another terminal, call it with the <code>curl</code> program:
+		</p>
+		<figure>
+			<pre>
+$ curl -i -X POST -H 'Content-Type: application/json' -d '{"a":2,"b":3}' http://localhost:8080/xrpc/com.example.math.add
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"sum":5}
+			</pre>
+		</figure>
+		<p>
+			(The <code>Date</code> and <code>Content-Length</code> headers have been removed, to make it easier to read.)
+		</p>
+		<p>
+			It works!
+			Here is what that request and response look like, as <abbr title="HyperText Transfer Protocol">HTTP</abbr>:
+		</p>
+		<figure>
+			<pre>
+POST /xrpc/com.example.math.add HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+
+{"a":2,"b":3}
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"sum":5}
+			</pre>
+		</figure>
+		<p>
+			Negative numbers work too:
+		</p>
+		<figure>
+			<pre>
+$ curl -X POST -H 'Content-Type: application/json' -d '{"a":-7,"b":10}' http://localhost:8080/xrpc/com.example.math.add
+{"sum":3}
+			</pre>
+		</figure>
+		<p>
+			Watch out for one thing:
+			you must include <code>-H 'Content-Type: application/json'</code>.
+			Without it, <code>curl</code> says the body is <code>application/x-www-form-urlencoded</code> (a web form), and the server rejects it:
+		</p>
+		<figure>
+			<pre>
+$ curl -X POST -d '{"a":2,"b":3}' http://localhost:8080/xrpc/com.example.math.add
+{"error":"InvalidRequest","message":"Content-Type must be application/json"}
+			</pre>
+		</figure>
+		<section>
+			<h1>Errors</h1>
+			<p>
+				Now, let's try some requests that should fail.
+			</p>
+			<p>
+				A decimal:
+			</p>
+			<figure>
+				<pre>
+$ curl -X POST -H 'Content-Type: application/json' -d '{"a":2.5,"b":3}' http://localhost:8080/xrpc/com.example.math.add
+{"error":"InvalidRequest","message":"Invalid JSON: json: cannot unmarshal number 2.5 into Go struct field addInput.a of type int64"}
+				</pre>
+			</figure>
+			<p>
+				A missing field:
+			</p>
+			<figure>
+				<pre>
+$ curl -X POST -H 'Content-Type: application/json' -d '{"a":2}' http://localhost:8080/xrpc/com.example.math.add
+{"error":"InvalidRequest","message":"Input must have the properties \"a\" and \"b\""}
+				</pre>
+			</figure>
+			<p>
+				A number that is too big — the same number that the official JavaScript library got wrong:
+			</p>
+			<figure>
+				<pre>
+$ curl -X POST -H 'Content-Type: application/json' -d '{"a":9007199254740993,"b":0}' http://localhost:8080/xrpc/com.example.math.add
+{"error":"InvalidRequest","message":"Input numbers must be from -1000000000000000 to 1000000000000000"}
+				</pre>
+			</figure>
+			<p>
+				The wrong <abbr title="HyperText Transfer Protocol">HTTP</abbr> method (<code>GET</code> instead of <code>POST</code>):
+			</p>
+			<figure>
+				<pre>
+$ curl -i http://localhost:8080/xrpc/com.example.math.add
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{"error":"InvalidRequest","message":"Incorrect HTTP method (GET) expected POST"}
+				</pre>
+			</figure>
+			<p>
+				An end-point that does not exist:
+			</p>
+			<figure>
+				<pre>
+$ curl -i -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:8080/xrpc/com.example.math.subtract
+HTTP/1.1 501 Not Implemented
+Content-Type: application/json
+
+{"error":"MethodNotImplemented","message":"Method Not Implemented"}
+				</pre>
+			</figure>
+			<p>
+				(A small warning about numbers like <code>2.0</code> and <code>1e2</code>.
+				Go rejects them for an <code>int64</code>, but the official JavaScript library accepts them as integers.
+				So, when <em>calling</em> an <strong>XRPC</strong> end-point, always send plain integers, like <code>2</code> and <code>100</code>.)
+			</p>
+		</section>
+		<section>
+			<h1>A Client in Go</h1>
+			<p>
+				You do not need a special library to call an <strong>XRPC</strong> end-point from code, either.
+				Here is a client in Go, again using only the standard library:
+			</p>
+			<figure>
+				<pre><code>
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+)
+
+// add calls the com.example.math.add XRPC end-point on a server.
+func add(server string, a int64, b int64) (int64, error) {
+	// The request body.
+	body, err := json.Marshal(map[string]int64{"a": a, "b": b})
+	if nil != err {
+		return 0, err
+	}
+
+	// A procedure is an HTTP POST, to /xrpc/ followed by the NSID.
+	response, err := http.Post(server+"/xrpc/com.example.math.add", "application/json", bytes.NewReader(body))
+	if nil != err {
+		return 0, err
+	}
+	defer response.Body.Close()
+
+	// An error.
+	if http.StatusOK != response.StatusCode {
+		var xrpcError struct {
+			Error   string `json:"error"`
+			Message string `json:"message"`
+		}
+		json.NewDecoder(response.Body).Decode(&amp;xrpcError)
+		return 0, fmt.Errorf("%d %s: %s", response.StatusCode, xrpcError.Error, xrpcError.Message)
+	}
+
+	// Success.
+	var output struct {
+		Sum int64 `json:"sum"`
+	}
+	err = json.NewDecoder(response.Body).Decode(&amp;output)
+	if nil != err {
+		return 0, err
+	}
+	return output.Sum, nil
+}
+
+func main() {
+	sum, err := add("http://localhost:8080", 2, 3)
+	if nil != err {
+		log.Fatal(err)
+	}
+	fmt.Println("2 + 3 =", sum)
+
+	_, err = add("http://localhost:8080", 2, 9007199254740993)
+	fmt.Println("error:", err)
+}
+				</code></pre>
+			</figure>
+			<p>
+				Running it (with the server still running) gives:
+			</p>
+			<figure>
+				<pre>
+$ go run .
+2 + 3 = 5
+error: 400 InvalidRequest: Input numbers must be from -1000000000000000 to 1000000000000000
+				</pre>
+			</figure>
+		</section>
+	</section>
+	<section>
+		<h1>The Problem with example.com</h1>
+		<p>
+			Everything works.
+			But, there is a problem with the name <code>com.example.math.add</code>.
+		</p>
+		<p>
+			Remember, from step 1, that whoever controls the domain in an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> gets to decide what it means.
+			This is what keeps <strong><abbr title="Namespaced Identifier">NSID</abbr>s</strong> from clashing.
+			If you own a domain, nobody else can (legitimately) define end-points under it.
+		</p>
+		<p>
+			But, nobody owns <code>example.com</code>.
+			It is reserved, for use in documentation — like this article.
+			(See <abbr title="Request for Comments">RFC</abbr> 2606 and <abbr title="Request for Comments">RFC</abbr> 6761.)
+			That means:
+		</p>
+		<ul>
+			<li>
+				<strong>Anyone can use it.</strong>
+				Someone else could make their own <code>com.example.math.add</code> that works differently from ours — maybe it returns <code>{"result":5}</code> instead of <code>{"sum":5}</code>.
+				Neither of us would be “right”.
+			</li>
+			<li>
+				<strong>Nobody can publish its Lexicon.</strong>
+				Software can look up a <strong>Lexicon</strong> from its <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, using <abbr title="Domain Name System">DNS</abbr>.
+				(That is covered in <a href="../resolve-lexicon/">How-To Resolve a Lexicon</a>.)
+				But, only the owner of the domain can create that <abbr title="Domain Name System">DNS</abbr> record — and <code>example.com</code> has no owner.
+			</li>
+		</ul>
+		<p>
+			You can see that there is no <strong>Lexicon</strong> published for it:
+		</p>
+		<figure>
+			<pre>
+$ dig +short TXT _lexicon.math.example.com
+$
+			</pre>
+		</figure>
+		<p>
+			(Nothing came back.)
+		</p>
+		<p>
+			So, <code>com.example</code> is fine for learning, and for examples.
+			But, for an end-point that other people will use, you should use a domain that you actually control.
+		</p>
+	</section>
+	<section>
+		<h1>Switching to a Real Domain</h1>
+		<p>
+			I control the domain <code>reiver.link</code>.
+			So, I can use the <strong>authority</strong> <code>math.reiver.link</code>.
+			Written backwards, with the name <code>add</code> on the end, that gives the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>:
+		</p>
+		<pre><code>
+link.reiver.math.add
+		</code></pre>
+		<figure>
+			<pre>
+link.reiver.math.add
+└──────┬───────┘ └┬┘
+       │          │
+   authority    name
+			</pre>
+		</figure>
+		<p>
+			(For your own end-points, use your own domain, in the same way.
+			For example, if you owned <code>yourname.dev</code>, you could use <code>dev.yourname.math.add</code>.)
+		</p>
+		<p>
+			Switching only takes 2 changes.
+		</p>
+		<p>
+			First, change the <code>id</code> in the <strong>Lexicon</strong>, and move the file to match:
+		</p>
+		<figure>
+			<pre>
+before:  "id": "com.example.math.add",     lexicons/com/example/math/add.json
+after:   "id": "link.reiver.math.add",     lexicons/link/reiver/math/add.json
+			</pre>
+		</figure>
+		<p>
+			Second, change the <code>nsid</code> constant in the server:
+		</p>
+		<figure>
+			<pre>
+before:  const nsid = "com.example.math.add"
+after:   const nsid = "link.reiver.math.add"
+			</pre>
+		</figure>
+		<p>
+			(That is why the code kept the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> in one constant.)
+		</p>
+		<p>
+			And, the client now calls:
+		</p>
+		<pre><code>
+http://localhost:8080/xrpc/link.reiver.math.add
+		</code></pre>
+		<p>
+			Notice what did <em>not</em> change: where the server runs.
+			The <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> says who controls the <em>definition</em> of the end-point — not who can <em>run</em> it.
+			Anyone can run a server, on any host, that implements <code>link.reiver.math.add</code>.
+			They just have to follow its <strong>Lexicon</strong>.
+		</p>
+	</section>
+	<section>
+		<h1>Publishing the Lexicon (Optional)</h1>
+		<p>
+			With a real domain, you can <em>publish</em> your <strong>Lexicon</strong>, so that other people's software can find it from just the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>.
+		</p>
+		<p>
+			This is the one part of this article that uses <strong><abbr title="AT-Protocol">ATProto</abbr></strong> itself.
+			<strong>Lexicons</strong> are published as records in an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> repository.
+			So, you need an <strong><abbr title="AT-Protocol">ATProto</abbr></strong> account.
+			(Again, this is optional — your end-point works without it.)
+		</p>
+		<p>
+			Publishing has 2 steps:
+		</p>
+		<ol>
+			<li>save the <strong>Lexicon</strong> as a record in your repository, and</li>
+			<li>add a <abbr title="Domain Name System">DNS</abbr> <strong>TXT</strong> record that points to your repository.</li>
+		</ol>
+		<section>
+			<h1>Publishing Step 1: Save the Lexicon as a Record</h1>
+			<p>
+				The record goes:
+			</p>
+			<ul>
+				<li>in the collection <code>com.atproto.lexicon.schema</code>,</li>
+				<li>with the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> as the record-key.</li>
+			</ul>
+			<p>
+				The record itself is the <strong>Lexicon</strong>, with one extra field added — <code>"$type": "com.atproto.lexicon.schema"</code>.
+			</p>
+			<p>
+				My account's <strong><abbr title="decentralized identifier">DID</abbr></strong> is <code>did:plc:scewmn2pl3oz36mxme2b6czz</code>, and its <strong><abbr title="Personal Data Server">PDS</abbr></strong> is <code>https://blacksky.app</code>.
+				(If you do not know yours, see <a href="../resolve-handle-to-did/">How-To Resolve a Handle to a <abbr title="decentralized identifier">DID</abbr></a> and <a href="../resolve-did-to-pds/">How-To Resolve a <abbr title="decentralized identifier">DID</abbr> to a <abbr title="Personal Data Server">PDS</abbr></a>.)
+			</p>
+			<p>
+				First, log in, with <code>com.atproto.server.createSession</code>, to get an access token.
+				(Use an <em>app password</em> — not your main password.)
+			</p>
+			<figure>
+				<pre>
+$ curl -X POST -H 'Content-Type: application/json' \
+    -d '{"identifier":"reiver.blacksky.team","password":"xxxx-xxxx-xxxx-xxxx"}' \
+    https://blacksky.app/xrpc/com.atproto.server.createSession
+				</pre>
+			</figure>
+			<p>
+				The response includes an <code>accessJwt</code>.
+				That is the access token.
+			</p>
+			<p>
+				Then, save the record, with <code>com.atproto.repo.putRecord</code>:
+			</p>
+			<figure>
+				<pre>
+$ curl -X POST -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer ACCESS-TOKEN' \
+    -d '{
+      "repo": "did:plc:scewmn2pl3oz36mxme2b6czz",
+      "collection": "com.atproto.lexicon.schema",
+      "rkey": "link.reiver.math.add",
+      "record": {
+        "$type": "com.atproto.lexicon.schema",
+        "lexicon": 1,
+        "id": "link.reiver.math.add",
+        "defs": { ... }
+      }
+    }' \
+    https://blacksky.app/xrpc/com.atproto.repo.putRecord
+				</pre>
+			</figure>
+			<p>
+				(Replace <code>ACCESS-TOKEN</code> with the <code>accessJwt</code>, and <code>{ ... }</code> with the <code>defs</code> from the <strong>Lexicon</strong> file.)
+			</p>
+			<p>
+				Notice that <code>createSession</code> and <code>putRecord</code> are <strong>XRPC</strong> <strong>procedures</strong> too — called exactly the same way as our <code>add</code>.
+			</p>
+		</section>
+		<section>
+			<h1>Publishing Step 2: Add a DNS TXT Record</h1>
+			<p>
+				To get the <abbr title="Domain Name System">DNS</abbr> name, take the <strong>authority</strong> (<code>math.reiver.link</code>), and put <code>_lexicon.</code> in front:
+			</p>
+			<pre><code>
+_lexicon.math.reiver.link
+			</code></pre>
+			<p>
+				Create a <strong>TXT</strong> record with that name.
+				Its value is <code>did=</code> followed by your <strong><abbr title="decentralized identifier">DID</abbr></strong>:
+			</p>
+			<figure>
+				<pre>
+name:   _lexicon.math.reiver.link
+type:   TXT
+value:  did=did:plc:scewmn2pl3oz36mxme2b6czz
+				</pre>
+			</figure>
+			<p>
+				Now, anyone can go from the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> <code>link.reiver.math.add</code> to its <strong>Lexicon</strong>:
+			</p>
+			<figure>
+				<pre>
+link.reiver.math.add                                  (NSID)
+  → _lexicon.math.reiver.link                         (DNS name)
+  → did:plc:scewmn2pl3oz36mxme2b6czz                  (DID, from the TXT record)
+  → https://blacksky.app                              (PDS)
+  → at://did:plc:scewmn2pl3oz36mxme2b6czz/com.atproto.lexicon.schema/link.reiver.math.add
+                                                      (the Lexicon record)
+				</pre>
+			</figure>
+			<p>
+				Those steps are explained in detail in <a href="../resolve-lexicon/">How-To Resolve a Lexicon</a>.
+			</p>
+		</section>
+	</section>
+	<section>
+		<h1>Summary</h1>
+		<p>
+			To <strong>create</strong> an <strong>XRPC</strong> <abbr title="Application Programming Interface">API</abbr> end-point:
+		</p>
+		<ol>
+			<li>Choose an <strong><abbr title="Namespaced Identifier">NSID</abbr></strong> — a domain you control, written backwards, with a name on the end (<code>link.reiver.math.add</code>).  Use <code>com.example</code> only for examples.</li>
+			<li>Decide if it is a <strong>query</strong> (<code>GET</code>, reads) or a <strong>procedure</strong> (<code>POST</code>, does).</li>
+			<li>Write a <strong>Lexicon</strong> that describes the input and the output.  Remember: integers only (no decimals), and keep them within 53 bits.</li>
+			<li>Write an <abbr title="HyperText Transfer Protocol">HTTP</abbr> handler at <code>/xrpc/</code> plus the <strong><abbr title="Namespaced Identifier">NSID</abbr></strong>, that checks the method, the <code>Content-Type</code>, and the input — and returns errors as <code>{"error": …, "message": …}</code>.</li>
+			<li>Call it with any <abbr title="HyperText Transfer Protocol">HTTP</abbr> client — even <code>curl</code>.</li>
+			<li>Optionally, publish the <strong>Lexicon</strong> — as a <code>com.atproto.lexicon.schema</code> record, plus a <code>_lexicon.</code> <abbr title="Domain Name System">DNS</abbr> <strong>TXT</strong> record.</li>
+		</ol>
+		<p>
+			And, none of it had anything to do with social media.
+		</p>
+	</section>
+	<section>
+		<h1>Sources</h1>
+		<ul>
+			<li><a href="https://atproto.com/specs/xrpc">AT Protocol Specification: HTTP API (XRPC)</a></li>
+			<li><a href="https://atproto.com/specs/lexicon">AT Protocol Specification: Lexicon</a> (see “Query and Procedure (HTTP API)”, “Authority and Control”, and “Lexicon Publication and Resolution”)</li>
+			<li><a href="https://atproto.com/specs/nsid">AT Protocol Specification: Namespaced Identifiers (NSIDs)</a></li>
+			<li><a href="https://atproto.com/specs/data-model">AT Protocol Specification: Data Model</a> (see “Why No Floats?”)</li>
+			<li><a href="https://atproto.com/guides/lexicon-style-guide">AT Protocol: Lexicon Style Guide</a></li>
+			<li><a href="https://www.rfc-editor.org/rfc/rfc2606">RFC 2606: Reserved Top Level DNS Names</a> (section 3) and <a href="https://www.rfc-editor.org/rfc/rfc6761">RFC 6761: Special-Use Domain Names</a> (section 6.5)</li>
+			<li><a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/lexicon/schema.json"><code>com.atproto.lexicon.schema</code> lexicon</a>, <a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/repo/putRecord.json"><code>com.atproto.repo.putRecord</code> lexicon</a>, <a href="https://github.com/bluesky-social/atproto/blob/main/lexicons/com/atproto/server/createSession.json"><code>com.atproto.server.createSession</code> lexicon</a></li>
+			<li>Tests, November 25th, 2026: <code>@atproto/lexicon</code> 0.7.22 and <code>@atproto/xrpc-server</code> 0.13.17 (the official TypeScript libraries) with this article's <strong>Lexicon</strong>; the Go server and client in this article (Go 1.27.4); <code>public.api.bsky.app</code> (<code>com.example.math.add</code> → <code>405</code>)</li>
+		</ul>
+	</section>
+	<footer>
+		<include src="../../author.html" />
+		<include src="../../license.html" />
+	</footer>
+</article>
+</main>
+</body>
+</html>
